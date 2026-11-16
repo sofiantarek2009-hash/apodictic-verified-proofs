@@ -10,7 +10,7 @@ SAP S/4HANA 3-Way Match, ISO 20022 camt.053/pain.001 + Bi-Temporal & WORM).
 Run standalone anywhere:
     pip install z3-solver && python3 02-LIVE-MULTI-ERP-WALKTHROUGH.py
 Or inside the Noesis repository:
-    PYTHONPATH=/Users/sofian/App python3 gists/02-critical-path-multi-erp-lifecycle/02-LIVE-MULTI-ERP-WALKTHROUGH.py
+    PYTHONPATH=. python3 gists/02-critical-path-multi-erp-lifecycle/02-LIVE-MULTI-ERP-WALKTHROUGH.py
 """
 
 import hashlib
