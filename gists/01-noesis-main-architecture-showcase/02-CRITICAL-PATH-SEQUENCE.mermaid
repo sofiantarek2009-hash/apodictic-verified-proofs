@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor Agent as Autonomous AI / ERP Client
+    participant Wire as noesis-wire-proxy (PG 3.0 TCP)
+    participant DLP as ZeroPIIGateway / DeepDlpEngine
+    participant AST as SqlAstCompiler & SSA Lifter
+    participant Z3 as noesis-z3-engine (Z3 5.4.1 QF_LRA)
+    participant Saga as ERP Compensator / Savepoint
+    participant Vault as SEC 17a-4 WORM Audit Vault
+    participant DB as Upstream Postgres / Odoo 18 / NetSuite
+
+    Agent->>Wire: TCP Packet 'Q' (UPDATE accounts SET balance = balance - 90000 WHERE iban='DE89370400440532013000')
+    Wire->>DLP: sanitize_text(raw_sql) [0.013ms P50]
+    DLP-->>Wire: sanitized_sql (<SYM_IBAN_1>) + reverse_vault mapping
+    Wire->>AST: SqlAstCompiler.compile(sanitized_sql) [0.060ms P50]
+
+    alt Catastrophic Unbounded DDL/DML (is_unbounded == True)
+        AST-->>Wire: Flag DROP / TRUNCATE / DELETE without WHERE
+        Wire->>Vault: append_block(verdict="UNSAT", status="BLOCKED_UNBOUNDED_MUTATION")
+        Wire-->>Agent: ErrorResponse ('E') SQLSTATE 42501 + ReadyForQuery ('Z', 'E')
+    else Bounded Financial Mutation
+        AST-->>Wire: SqlAstNode(UPDATE, accounts, where_predicates=[iban=<SYM_IBAN_1>])
+        Wire->>Z3: verify_financial_dag(bal=100000, min_res=20000, amt=90000, cap=25000, cfo=False) [1.234ms P50]
+
+        alt Z3 Verdict == UNSAT (Insolvency or Unauthorized Cap Breach)
+            Z3-->>Wire: Verdict.UNSAT + unsat_core=['INV_SPEND_CAP_wire_query_mutation', 'INV_SOLVENCY_wire_query_mutation'] + SHA-256
+            Wire->>Vault: append_block(verdict="UNSAT", zk_digest=proof.sha256_hash)
+            Wire-->>Agent: ErrorResponse ('E') SQLSTATE 40001 + Compensating SQL Patch (0 dirty rows written to DB)
+        else Z3 Verdict == SAT (All Invariants Formally Proven)
+            Z3-->>Wire: Verdict.SAT + ProofCertificate(proof_id, sha256_hash)
+            Wire->>Saga: Stage SQL SAVEPOINT / Odoo account.move.reversal (<38ms SLA)
+            Saga->>DB: Execute Verified Mutation Inside Isolated Transaction
+            DB-->>Saga: CommandComplete ('C')
+            Saga->>Vault: append_block(verdict="SAT", zk_digest=proof.sha256_hash)
+            Wire-->>Agent: CommandComplete ('C') + ReadyForQuery ('Z', 'I') + WORM Block Receipt
+        end
+    end

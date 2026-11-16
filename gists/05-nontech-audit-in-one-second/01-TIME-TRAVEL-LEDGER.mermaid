@@ -1,0 +1,5 @@
+flowchart TD
+    Q1["March 15: Books close for Q1\nCash recorded = $1,000,000"] --> Q3["September 20: Audit discovers missing $150,000 adjustment"]
+    Q3 -->|"Normal Database (Chalkboard)"| OVERWRITE["Overwrites old balance -> $1,150,000\nOriginal March proof lost -> Weeks of audit emails"]
+    Q3 -->|"Noesis Time-Travel Ledger"| DUAL["Preserves BOTH timelines forever:\n• Query 'As of March 15': $1,000,000\n• Query 'As of Today (Restated)': $1,150,000"]
+    DUAL --> SEAL["Sealed with Tamper-Proof Receipt\n+ Automatic split-cap fraud scan\n-> Verified by external auditor in <1ms"]

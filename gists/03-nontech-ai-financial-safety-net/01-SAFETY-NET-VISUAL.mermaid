@@ -1,0 +1,5 @@
+flowchart LR
+    AI["1. AI Agent Proposes Payment\n'Pay $90,000 to IBAN DE89...'\n(Real cash balance: $100,000)"] --> MASK["2. Privacy Checkpoint\nSwaps real bank & tax IDs\nwith safe placeholders\n(0 secrets sent to cloud AI)"]
+    MASK --> REF["3. Math Referee Checkpoint\nChecks cash floor ($20,000),\nspending limits, & VAT law\nin ~1.4 milliseconds"]
+    REF -->|"Breaks Cash Reserve!"| STOP["BLOCKED BEFORE BANK TOUCHED\n$0 moved | Exact mistake explained\n+ Sealed on security log"]
+    REF -->|"100% Rules Pass"| SAFE["APPROVED WITH INSTANT UNDO\nPayment executes safely\n+ 38ms rewind handle ready"]

@@ -1,0 +1,49 @@
+flowchart TB
+    subgraph ClientSurface["Client, AI Agent & UI Layer (Next.js App Router)"]
+        UI["Enterprise Portal & Proof Center\n(frontend/app/portal, /demo, SovereignProofCenter)"]
+        AGENT["Autonomous Financial Agent\n(SQL Queries, Odoo RPC, NetSuite, SAP OData, Wires)"]
+    end
+
+    subgraph ApiAndWireIngress["API Gateway & Wire Protocol Proxy Layer"]
+        NEXTAPI["Next.js /api/noesis/* Routes\nverify | deidentify | worm-vault | time-travel | proof-transcript"]
+        PGPROXY["noesis-wire-proxy (Rust / Python)\nPostgreSQL 3.0 Frame Codec ('Q','P','E','Z')\nSQLSTATE 40001 / 42501 Synthesis"]
+        JAILER["noesis-jailer & AF_VSOCK Bridge\nFirecracker MicroVM + 24-Syscall seccomp-bpf"]
+    end
+
+    subgraph SecurityAndPrivacy["Zero-Leak Sanitization & Identity"]
+        PII["ZeroPIIGateway / DeepDlpEngine\nRegex + Shannon Entropy (>4.2 bits) -> <SYM_*> Vault"]
+        ABAC["AbacPolicyZ3Compiler\nClearance + Data Residency + Dual Custody + SoD"]
+    end
+
+    subgraph FormalReasoningCore["Neurosymbolic & Formal Math Engine (Microsoft Z3 5.4.1)"]
+        SQLSSA["SqlAstCompiler & SqlSsaLifter\nDijkstra Weakest Precondition wp(S, Q) + Counterexample Patch"]
+        Z3CORE["FormalInvariantKernel & AdvancedSmtKernel\nQF_LRA Liquidity Floor, Spend Caps, Atomic Reversal, VAT Parity"]
+        STAT["Statutory Theorem Library\nASC 606 / IFRS 15 | ZATCA / ETA / EU VAT\nOECD Pillar Two | Basel III LCR z3.Optimize"]
+        ONT["Kinetic Financial Ontology\n32-Schema Graph | k-Hop Blast Radius\nTarjan/DFS Carousel Fraud Cycle Detector"]
+    end
+
+    subgraph ClearingAndStorage["ERP Clearing, Consensus & Forensic Persistence"]
+        ERP["ERP Clearing & Saga Compensators\nOdoo 18 account.move.reversal | NetSuite Journal\n3-Way Match Z3 | Subset-Sum ISO 20022 Reconciler"]
+        WORM["SEC 17a-4 WORM Vault & MerkleAuditLedger\nSHA-256 Forward Hash Chain (7-Year Hold)"]
+        MPT["Hexary Merkle-Patricia Trie & SQL:2011 Bi-Temporal Ledger\nO(log N) Inclusion/Exclusion Proofs + Benford/Smurfing Detector"]
+        UPSTREAM[("Upstream Production PostgreSQL / ERP")]
+    end
+
+    UI --> NEXTAPI
+    AGENT --> PGPROXY
+    AGENT --> NEXTAPI
+    NEXTAPI --> PII
+    PGPROXY --> PII
+    PII --> ABAC
+    PII --> SQLSSA
+    ABAC --> Z3CORE
+    SQLSSA --> Z3CORE
+    ONT --> ABAC
+    Z3CORE --> STAT
+    Z3CORE -->|"SAT + Proof Receipt"| ERP
+    Z3CORE -->|"UNSAT -> SQLSTATE 40001 + Witness Patch"| PGPROXY
+    ERP --> JAILER
+    ERP --> UPSTREAM
+    Z3CORE --> WORM
+    ERP --> WORM
+    WORM --> MPT

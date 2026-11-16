@@ -1,0 +1,13 @@
+flowchart TD
+    INV[Raw Invoice Line Net + Rates] --> SPLIT{Jurisdiction}
+    SPLIT -->|Egypt ETA v1.0| T2["Compute T2 Table Tax = Net * T2_Rate"]
+    T2 --> BASE["Compound VAT Base = Net + T2"]
+    BASE --> T1["Compute T1 VAT = Base * 0.14"]
+    T1 --> GROSS["Gross Receivable = Net + T2 + T1"]
+    GROSS --> PAY["Buyer Settlement: Cash + T4 WHT == Gross"]
+    PAY --> T4["Verify T4 == Net * WHT_Rate (Excl. VAT)"]
+    SPLIT -->|Saudi ZATCA Phase 2| LINE["Per-Line VAT Rounding (halala)"]
+    LINE --> DRIFT{Header vs Sum Drift != 0?}
+    DRIFT -->|Yes: BR-CO-14 Risk| Z3OPT["Z3 Integer Delta Allocator +/- 1 halala"]
+    Z3OPT --> UBL["Emit Compliant UBL 2.1 XML TaxTotal"]
+    DRIFT -->|No| UBL

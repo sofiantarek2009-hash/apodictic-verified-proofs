@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    participant AI as Autonomous Finance Agent / Legacy Script
+    participant DLP as Zero-PII & Prompt Injection Gate
+    participant Z3 as Z3 5.4.1 Formal Clearing Kernel (QF_LRA)
+    participant ODOO as Odoo 18 JSON-RPC (/jsonrpc + SQLite/PG GL)
+    participant ETA as Egypt ETA v1.0 Canonical Hasher
+    participant WORM as SEC 17a-4 Merkle Seal
+
+    AI->>DLP: Invoice Line ("100k EGP, 5% T2, 14% T1 VAT")
+    alt Contains Indirect OCR Injection
+        DLP-->>AI: QUARANTINED_INJECTION (0 ERP writes)
+    else Clean & PII-Redacted
+        DLP->>ODOO: object.execute_kw(account.move, search_read internalID)
+        DLP->>Z3: Verify 9-digit TIN, T1 == (Net + T2) * 0.14, Debits == Credits
+        alt Naive Flat VAT (14,000 EGP instead of 14,700 EGP)
+            Z3-->>AI: REJECTED_PRE_COMMIT (UNSAT: ETA_COMPOUND_T2_T1_VAT_PARITY)
+        else All Statutory & Double-Entry Laws Proven (SAT)
+            Z3->>ETA: Canonical Uppercase Serialization -> SHA-256 Digest
+            Z3->>ODOO: account.move.create + action_post (119,700 EGP balanced)
+            ODOO-->>WORM: Seal Move ID + ETA SHA-256 Digest
+            AI->>Z3: Settle Cash (116,700) + T4 WHT (3,000 = 3% Net)
+            Z3->>ODOO: account.payment.register_wht_settlement (ETA-T4 cert)
+        end
+    end
+
+    Note over AI,ODOO: Legacy Script Writes Corrupted Move Directly to Odoo
+    Z3->>ODOO: Audit account.move.read(move_id) -> UNSAT (Flat 14,000 VAT)
+    Z3->>ODOO: Execute account.move.reversal (create + reverse_moves)
+    ODOO-->>Z3: Linked out_refund Created (Net AR Exposure == 0.00 EGP)
+    Z3->>WORM: Seal Atomic Reversal & Balance Conservation Proof

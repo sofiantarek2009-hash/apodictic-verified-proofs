@@ -1,0 +1,8 @@
+stateDiagram-v2
+    [*] --> IncomingPayload
+    IncomingPayload --> ZeroPIIGate: Mask IBAN & TIN -> SYM_*
+    ZeroPIIGate --> StatisticalCheck: Inspect Amount vs 95% Single-Tx Cap
+    StatisticalCheck --> StatefulZ3DAG: Accumulate 24h Velocity & Cash Floor
+    StatefulZ3DAG --> SAT_Approved: Step Cash >= Reserve AND 24h <= Cap
+    StatefulZ3DAG --> UNSAT_Blocked: Step 3 Breaches Reserve or 24h Limit
+    UNSAT_Blocked --> AlertLedger: Emit SMURFING_STRUCTURING_DETECTED + Unsat Core

@@ -1,0 +1,9 @@
+flowchart LR
+    PO["Purchase Order (SAP / NetSuite)\nOrdered: 10 units @ $42,000"] --> MATCH{"Noesis 3-Way Matcher\nChecks PO vs Warehouse vs Bill"}
+    WH["Warehouse Delivery (Odoo)\nActually Received: 8 units"] --> MATCH
+    BILL["Vendor Bill (PDF / Email)\nBilled: 10 units @ $42,000"] --> MATCH
+
+    MATCH -->|"Billed > Received!"| HOLD["AUTO-HELD BEFORE PAYMENT\nStops $84,000 over-billing"]
+
+    BANK["Lump Bank Wire Arrives\n'$84,975.00 net of wire fee'"] --> SUBSET["Noesis Wire Solver\nTests open invoices"]
+    SUBSET --> DONE["AUTO-MATCHED IN ~2ms\nCloses AR-102 ($50k) + AR-103 ($35k)\n& logs $25.00 bank fee"]
