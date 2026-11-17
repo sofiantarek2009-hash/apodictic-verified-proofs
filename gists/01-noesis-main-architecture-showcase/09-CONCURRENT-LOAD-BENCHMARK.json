@@ -1,0 +1,27 @@
+{
+  "benchmark": "APODICTIC_CONCURRENT_LOAD_AND_MEMORY_V1",
+  "reproducible_command": "PYTHONPATH=. python3 noesis_engine/tests/benchmarks/run_concurrent_load_benchmark.py",
+  "config": {
+    "total_requests": 200,
+    "concurrent_workers": 8,
+    "rollback_iterations": 50,
+    "platform": "darwin"
+  },
+  "latency_ms": {
+    "gate_p50": 24.065,
+    "gate_p95": 28.564,
+    "gate_p99": 29.836,
+    "z3_p50": 19.737,
+    "z3_p95": 24.548,
+    "z3_p99": 26.147,
+    "local_rollback_p50": 0.006,
+    "local_rollback_p95": 0.008,
+    "total_wall_ms": 657.43
+  },
+  "memory_mb": {
+    "rss_before_mb": 39.47,
+    "rss_after_mb": 191.62,
+    "rss_delta_mb": 152.15
+  },
+  "sha256_digest": "62a5d4196d3e7633682770a3d2e01e53716e04e40a94bca69df0dca3afa3aebc"
+}
