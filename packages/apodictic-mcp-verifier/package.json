@@ -1,0 +1,20 @@
+{
+  "name": "@apodictic/mcp-verifier",
+  "version": "3.8.0",
+  "description": "Pre-commit MCP JSON-RPC tools/call firewall & SYM_* privacy interceptor",
+  "type": "module",
+  "bin": {
+    "apodictic-mcp-verifier": "./bin/apodictic-mcp-verifier.mjs"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "dependencies": {
+    "@apodictic/sdk": "^3.8.0"
+  },
+  "scripts": {
+    "test": "node ./test.mjs"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@apodictic/sdk",
+  "version": "3.8.0",
+  "description": "Production TypeScript/Node SDK for Apodictic Pre-Commit Z3 Verification & Zero-PII Symbolic Gateway",
+  "type": "module",
+  "main": "./src/index.mjs",
+  "types": "./src/index.d.ts",
+  "files": [
+    "src/"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node ./test.mjs"
+  },
+  "license": "MIT"
+}
