@@ -45,6 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y z3
       - name: Compile and test all 55 Rust crates
         working-directory: noesis_infra
         run: cargo test --workspace --exclude noesis-jailer && cargo check -p noesis-jailer
