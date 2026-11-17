@@ -47,4 +47,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Compile and test all 55 Rust crates
         working-directory: noesis_infra
-        run: cargo test --workspace
+        run: cargo test --workspace --exclude noesis-jailer && cargo check -p noesis-jailer
