@@ -1,9 +1,10 @@
-# Apodictic — Verified Architecture & Executable Domain Proofs
+# Apodictic — Public Verification Harness & CI Attestations
 
-> Nine standalone multi-file proof bundles spanning PostgreSQL 3.0 wire interception, Zero-PII bijective sanitization, live Odoo 18 JSON-RPC 2.0 + Egypt ETA v1.0 invoice verification, Z3 `5.4.1` statutory/solvency invariants, multicurrency FX split-brain compensation, ZATCA `BR-CO-14` halala parity, and multi-turn smurfing defense.
+> **Public verification suite and GitHub Actions CI attestation logs for Apodictic.**
+>
+> The proprietary Apodictic core engine (`noesis_engine/`, `noesis_infra/` Rust workspace, and enterprise ERP adapters) resides in a private repository. This public repository contains standalone executable Z3 `5.4.1` proof bundles, the public `@apodictic/sdk` & `@apodictic/mcp-verifier` interfaces, and reproducible CI test logs.
 
-See [`gists/README.md`](./gists/README.md) for the complete index, or run every bundle cleanly via:
-
+## Run Locally
 ```bash
 pip install -r requirements.txt
 for f in gists/*/*.py; do echo "=== $f ==="; python3 "$f"; done
