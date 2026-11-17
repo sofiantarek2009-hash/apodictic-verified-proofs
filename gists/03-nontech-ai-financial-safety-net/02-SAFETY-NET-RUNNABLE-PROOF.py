@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis Proof 03 — AI Financial Safety Net (Zero-PII Leak Guard + Z3 Solvency Veto)
+Apodictic Proof 03 — AI Financial Safety Net (Zero-PII Leak Guard + Z3 Solvency Veto)
 ====================================================================================
 Reproduces the exact 2-step safety net in under 2 milliseconds:
   1. Strips sensitive bank IBANs & tax IDs BEFORE any external AI sees the prompt,

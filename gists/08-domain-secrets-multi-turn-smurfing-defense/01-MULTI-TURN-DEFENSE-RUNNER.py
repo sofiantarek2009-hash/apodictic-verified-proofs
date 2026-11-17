@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis Domain Proof 08 — Indirect OCR Prompt Injection & Multi-Turn Smurfing Defense
+Apodictic Domain Proof 08 — Indirect OCR Prompt Injection & Multi-Turn Smurfing Defense
 ===================================================================================
 Executes live defenses against:
   1. Indirect prompt injection embedded in vendor invoice text + IBAN exfiltration,

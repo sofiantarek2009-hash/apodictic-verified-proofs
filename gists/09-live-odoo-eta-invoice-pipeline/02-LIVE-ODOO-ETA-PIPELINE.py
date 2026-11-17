@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis Proof 09 — Live Odoo 18 JSON-RPC 2.0 + Egypt ETA v1.0 Real Invoice Workflow
+Apodictic Proof 09 — Live Odoo 18 JSON-RPC 2.0 + Egypt ETA v1.0 Real Invoice Workflow
 ====================================================================================
 Runs end-to-end against either:
   - A real external Odoo 18 instance (`--odoo-url http://127.0.0.1:8069`), OR

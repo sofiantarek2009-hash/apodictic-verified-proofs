@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Noesis AI Enterprise Pre-Execution Verification & Sovereign Proof API
+  title: Apodictic Enterprise Pre-Execution Verification & Sovereign Proof API
   version: "2026.4.1"
   description: >
     Live Next.js App Router API contracts backed by Microsoft Z3 5.4.1, ZeroPIIGateway,
@@ -153,7 +153,7 @@ paths:
         "200":
           description: Tamper-evident JSON execution transcript across all deep moats
           headers:
-            X-Noesis-Master-SHA256:
+            X-Apodictic-Master-SHA256:
               schema: { type: string }
-            X-Noesis-Z3-Version:
+            X-Apodictic-Z3-Version:
               schema: { type: string, example: "5.4.1" }

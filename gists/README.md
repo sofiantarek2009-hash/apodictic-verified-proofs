@@ -1,4 +1,4 @@
-# Noesis AI — Verifiable Architecture & Executable Domain Proofs
+# Apodictic — Verifiable Architecture & Executable Domain Proofs
 
 > Every Gist bundle in this directory contains **zero mock stubs**, **zero marketing fluff**, **zero credentials**, and at least one **standalone executable Python + Microsoft Z3 (`5.4.1`) verification script** alongside protocol/sequence diagrams. All suites are backed by full-workspace Rust (`55 / 55` crates compiled, `38 / 38` tests passing), Python (`49 / 49` unit tests + `5 / 5` wire tests passing), and TypeScript API route tests (`19 / 19`).
 

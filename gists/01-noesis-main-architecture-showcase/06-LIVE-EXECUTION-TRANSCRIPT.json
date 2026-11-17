@@ -1,12 +1,12 @@
 {
   "metadata": {
-    "artifact_type": "NOESIS_CRYPTOGRAPHIC_PROOF_OF_EXECUTION_TRANSCRIPT",
-    "timestamp_utc": "2026-11-16T18:21:43.983468+00:00",
+    "artifact_type": "APODICTIC_CRYPTOGRAPHIC_PROOF_OF_EXECUTION_TRANSCRIPT",
+    "timestamp_utc": "2026-11-17T10:14:45.961888+00:00",
     "z3_prover_version": "5.4.1",
     "python_runtime": "3.9.8",
     "platform_arch": "Darwin-arm64",
-    "total_harness_execution_ms": 33.434,
-    "master_transcript_sha256": "8ed5de811cb1b9a1e48f028da971134ba208983339c7f581ca38e1ca109b2565"
+    "total_harness_execution_ms": 21.406,
+    "master_transcript_sha256": "247ecb8036cf37bfee1f0442430da7ec365f8f43abbce8d6b929ee1006f43213"
   },
   "subsystems": {
     "1_zero_pii_gateway": {
@@ -21,7 +21,7 @@
       ],
       "bytes_removed": 26,
       "bijective_lossless_restore": true,
-      "latency_ms": 0.0322
+      "latency_ms": 0.0402
     },
     "2_symbolic_sql_hoare_verifier": {
       "insolvent_query_verdict": "UNSAT",
@@ -32,7 +32,7 @@
       "synthesized_compensating_sql": "BEGIN;\nUPDATE accounts SET balance = balance + 3000.0 WHERE account_id = 'ACC_OPERATING'; -- Restore reserve floor\nCOMMIT;",
       "solvent_query_verdict": "SAT",
       "solvent_proof_hash": "00bf2b588c4a81a5e4ceb4118ea9a73ece10d9a8f62d87f05899f67e30e02e3f",
-      "total_latency_ms": 16.404
+      "total_latency_ms": 6.571
     },
     "3_kinetic_ontology_and_abac_sod": {
       "carousel_fraud_cycles_detected": [
@@ -49,7 +49,7 @@
       ],
       "cfo_approval_decision": "PERMIT",
       "cfo_proof_hash": "69602dfb2572365f2585701cbd5271fef8e9c57b43b6da4058b37bb239c8bc4f",
-      "latency_ms": 2.946
+      "latency_ms": 3.705
     },
     "4_statutory_theorems_and_basel3_optimizer": {
       "asc606_verdict": "SAT",
@@ -61,7 +61,7 @@
       "oecd_pillar2_top_up_tax_usd": 2500000.0,
       "basel3_max_safe_payout_usd": 1150000.0,
       "basel3_binding_covenant": "BASEL_III_LCR",
-      "latency_ms": 8.146
+      "latency_ms": 5.569
     },
     "5_erp_3way_match_and_subset_sum_reconciler": {
       "phantom_invoice_verdict": "UNSAT",
@@ -74,7 +74,7 @@
         "AR-103"
       ],
       "implied_wire_fee_usd": 25.0,
-      "latency_ms": 5.819
+      "latency_ms": 5.426
     },
     "6_merkle_patricia_bitemporal_and_pcaob_dossier": {
       "merkle_state_root": "25b2f6ace45d9d3f75d85c5c6a8afd728eb6b1e92e606baaae562d3b9fe3590e",
@@ -85,9 +85,9 @@
       "structuring_alerts_triggered": [
         "SMURFING_STRUCTURING_DETECTED"
       ],
-      "pcaob_dossier_id": "DOS-355841849037",
-      "pcaob_dossier_seal_sha256": "355841849037ce86d71d8233a951c68d13248371900b64cb843280213446f594",
-      "latency_ms": 0.073
+      "pcaob_dossier_id": "DOS-FED7162048C4",
+      "pcaob_dossier_seal_sha256": "fed7162048c4c5f7bc61102b745aa0b9f2cd2dfaf2d0c27576c9a022ac1ca5ab",
+      "latency_ms": 0.082
     }
   }
 }

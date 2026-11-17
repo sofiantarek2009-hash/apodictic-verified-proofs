@@ -1,4 +1,4 @@
-# Noesis AI — Enterprise Verification, Security & Financial Settlement Kernel
+# Apodictic — Enterprise Verification, Security & Financial Settlement Kernel
 
 > **Pre-Execution Mathematical Firewall for Autonomous Enterprise Systems**  
 > Built on **Microsoft Z3 5.4.1 (`QF_LRA` / `QF_AUFLIA` / `z3.Optimize`)**, **Zero-PII Bijective Vault Tokenization**, **SQL Hoare-Logic Symbolic Verification**, **Palantir-Grade Kinetic Financial Ontology**, **3-Way ERP Clearing**, and **SEC 17a-4 WORM + Hexary Merkle-Patricia Forensics**.
@@ -9,7 +9,7 @@
 
 Probabilistic LLMs hallucinate 1–3% of the time. When an autonomous AI agent is connected to a corporate PostgreSQL database, Odoo 18, Oracle NetSuite, SAP S/4HANA, or an ISO 20022 payment rail, a 1% hallucination error causes unauthorized overdrafts, leaking IBAN/tax IDs, phantom invoice payments, or uncompensated accounting imbalances.
 
-**Noesis sits in front of the database and ERP wire** as a deterministic pre-commit firewall:
+**Apodictic sits in front of the database and ERP wire** as a deterministic pre-commit firewall:
 1. **Masks sensitive identifiers (`<SYM_*>`)** before prompts or traces ever reach external models.
 2. **Parses SQL mutations & ERP actions** into SSA symbolic representations and AST graphs.
 3. **Proves business, tax, solvency, and Separation-of-Duties invariants mathematically** using Z3 `5.4.1` before any byte commits upstream.

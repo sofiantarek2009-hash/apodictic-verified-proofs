@@ -22,4 +22,4 @@
     - Header VAT: `30.09 * 0.15 = 4.5135 -> 4.51 SAR` (**`0.01 SAR` mismatch!**)
 - ZATCA Phase 2 immediately rejects the UBL 2.1 XML invoice under rule **`BR-CO-14`** because document-level VAT total differs from the sum of rounded line VAT totals by `0.01 SAR`.
 
-Noesis solves the exact halala/piastre distribution and `T1/T2/T4` cash conservation inside Z3 `QF_LRA` before signing the invoice UUID XML.
+Apodictic solves the exact halala/piastre distribution and `T1/T2/T4` cash conservation inside Z3 `QF_LRA` before signing the invoice UUID XML.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis Domain Proof 06 — Multicurrency ERP Revaluation & Split-Brain Reversal
+Apodictic Domain Proof 06 — Multicurrency ERP Revaluation & Split-Brain Reversal
 =============================================================================
 Demonstrates:
   1. Why naive ERP reversals corrupt multicurrency general ledgers when FX spot drifts
@@ -93,6 +93,6 @@ if __name__ == "__main__":
     print(json.dumps({
         "naive_reversal": naive,
         "locked_period_reversal": closed_period,
-        "noesis_fx_compensated_reversal": exact,
+        "apodictic_fx_compensated_reversal": exact,
         "idempotent_saga_retry_guard": idemp,
     }, indent=2))

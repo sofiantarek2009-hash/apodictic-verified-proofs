@@ -35,7 +35,7 @@ z3-solver>=4.13
 EOF
 
 cat > "$TMP_REPO/README.md" <<'EOF'
-# Noesis AI — Verified Architecture & Executable Domain Proofs
+# Apodictic — Verified Architecture & Executable Domain Proofs
 
 > Nine standalone multi-file proof bundles spanning PostgreSQL 3.0 wire interception, Zero-PII bijective sanitization, live Odoo 18 JSON-RPC 2.0 + Egypt ETA v1.0 invoice verification, Z3 `5.4.1` statutory/solvency invariants, multicurrency FX split-brain compensation, ZATCA `BR-CO-14` halala parity, and multi-turn smurfing defense.
 

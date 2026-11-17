@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis AI — Standalone 10-Subsystem Technical Proof & Benchmark Runner
+Apodictic — Standalone 10-Subsystem Technical Proof & Benchmark Runner
 =======================================================================
 Zero external repository imports required. Run anywhere with:
     pip install z3-solver && python3 04-VERIFIABLE-CORE-RUNNER.py
@@ -90,7 +90,7 @@ def pg_encode_error(msg: str, sqlstate: str) -> bytes:
 
 
 def main() -> None:
-    print(f"=== NOESIS AI 10-SUBSYSTEM TECHNICAL PROOF (Z3 v{z3.get_version_string()}) ===\n")
+    print(f"=== APODICTIC AI 10-SUBSYSTEM TECHNICAL PROOF (Z3 v{z3.get_version_string()}) ===\n")
     t_suite = time.perf_counter()
     ctx = z3.Context()
 

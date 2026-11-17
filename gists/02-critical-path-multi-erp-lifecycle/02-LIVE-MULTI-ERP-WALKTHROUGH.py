@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis AI — Critical Path & Multi-ERP Production Walkthrough
+Apodictic — Critical Path & Multi-ERP Production Walkthrough
 =============================================================
 Executes the Critical Path:
     noesis-wire-proxy -> ZeroPIIGateway -> noesis-z3-engine -> noesis-sovereign-audit-vault
@@ -9,7 +9,7 @@ SAP S/4HANA 3-Way Match, ISO 20022 camt.053/pain.001 + Bi-Temporal & WORM).
 
 Run standalone anywhere:
     pip install z3-solver && python3 02-LIVE-MULTI-ERP-WALKTHROUGH.py
-Or inside the Noesis repository:
+Or inside the Apodictic repository:
     PYTHONPATH=. python3 gists/02-critical-path-multi-erp-lifecycle/02-LIVE-MULTI-ERP-WALKTHROUGH.py
 """
 

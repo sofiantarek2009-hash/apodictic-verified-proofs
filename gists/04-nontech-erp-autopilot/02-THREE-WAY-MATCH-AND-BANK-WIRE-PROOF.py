@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis Proof 04 — Automated 3-Way Match, Lump-Sum Wire Subset-Sum & Treasury Cap
+Apodictic Proof 04 — Automated 3-Way Match, Lump-Sum Wire Subset-Sum & Treasury Cap
 ================================================================================
 Reproduces 3 autonomous finance operations mathematically via Microsoft Z3:
   1. Phantom Billing Trap: Blocks a 10-GPU invoice against 8 received warehouse units.

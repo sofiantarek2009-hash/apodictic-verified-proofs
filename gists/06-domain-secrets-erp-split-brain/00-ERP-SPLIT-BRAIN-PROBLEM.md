@@ -14,9 +14,9 @@ When an autonomous agent commits step 1 of an intercompany settlement across mul
 
 ---
 
-## How Noesis Handles It Deterministically
+## How Apodictic Handles It Deterministically
 
-Before mutating any ERP record, Noesis checks via Z3 `QF_LRA`:
+Before mutating any ERP record, Apodictic checks via Z3 `QF_LRA`:
 1. **Fiscal Period Lock Guard**: `fiscal_period_open == True` and `period_lock_date < posting_date`.
 2. **Exact Base-Currency Balanced Settlement**:  
    $$\text{Debit}_{\text{USD}} \cdot r_{0} - \text{Credit}_{\text{EGP}} + \Delta_{\text{FX\_Realized}} == 0$$

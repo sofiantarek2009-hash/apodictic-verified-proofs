@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis Proof 05 — Bi-Temporal Time-Travel Ledger & SEC 17a-4 Tamper Detection
+Apodictic Proof 05 — Bi-Temporal Time-Travel Ledger & SEC 17a-4 Tamper Detection
 ===============================================================================
 Reproduces instant historical audit reproducibility & tamper-evident sealing:
   1. Records Q1 initial balance ($1,000,000) and a Q3 retroactive restatement

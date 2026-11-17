@@ -1,5 +1,5 @@
 """
-Noesis AI — Verbatim Core Engine Architectural Extracts
+Apodictic — Verbatim Core Engine Architectural Extracts
 ======================================================
 Contains annotated, runnable abstractions of the 5 deep enterprise subsystems
 from `noesis_engine/src/`:

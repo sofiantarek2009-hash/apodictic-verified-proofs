@@ -1,5 +1,5 @@
 /**
- * Noesis AI — TypeScript & Next.js App Router Edge Bridge (Verified Excerpts)
+ * Apodictic — TypeScript & Next.js App Router Edge Bridge (Verified Excerpts)
  * Physical Sources:
  *   - frontend/app/api/noesis/verify/route.ts  (Live Z3 5.4.1 subprocess & daemon bridge)
  *   - frontend/lib/noesis-verifier.ts          (Zero-PII tokenization & SMT-LIB2 AST builder)

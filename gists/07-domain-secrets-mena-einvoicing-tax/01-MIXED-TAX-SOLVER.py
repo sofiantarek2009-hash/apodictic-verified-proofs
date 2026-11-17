@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Noesis Domain Proof 07 — ETA (Egypt) Mixed-Tax Cascade, T4 WHT Timing & ZATCA BR-CO-14 Solver
+Apodictic Domain Proof 07 — ETA (Egypt) Mixed-Tax Cascade, T4 WHT Timing & ZATCA BR-CO-14 Solver
 =============================================================================================
 Demonstrates deterministic verification of:
   1. Egypt ETA compound T2 Table Tax -> T1 14% VAT tax base

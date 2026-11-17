@@ -1,4 +1,4 @@
-//! Noesis Rust Systems Kernel — Annotated Excerpts from Verified Workspace Crates
+//! Apodictic Rust Systems Kernel — Annotated Excerpts from Verified Workspace Crates
 //! Repository Paths Referenced:
 //!   1. noesis_infra/crates/noesis-wire-proxy/src/lib.rs      (PG 3.0 WireCodec & SQLSTATE 40001)
 //!   2. noesis_infra/crates/noesis-jailer/src/lib.rs          (24-Syscall Seccomp-BPF & Firecracker Config)
