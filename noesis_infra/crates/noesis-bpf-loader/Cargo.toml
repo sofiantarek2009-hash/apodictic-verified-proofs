@@ -1,0 +1,14 @@
+[package]
+name = "noesis-bpf-loader"
+version = "0.1.0"
+edition = "2021"
+description = "Userspace eBPF XDP loader, perf ring-buffer polling, and kernel BPF map syncer"
+
+[dependencies]
+bytes = { version = "1.6", features = ["serde"] }
+parking_lot = "0.12"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+nix = { version = "0.29", features = ["net", "socket", "mman"] }
+crc32fast = "1.4"

@@ -1,0 +1,86 @@
+[workspace]
+members = [
+    "crates/noesis-jailer",
+    "crates/noesis-wire-proxy",
+    "crates/noesis-raft-consensus",
+    "crates/noesis-erp-connectors",
+    "crates/noesis-z3-engine",
+    "crates/noesis-lsm-db",
+    "crates/noesis-tls",
+    "crates/noesis-distributed-tx",
+    "crates/noesis-storage-engine",
+    "crates/noesis-query-planner",
+    "crates/noesis-sql-engine",
+    "crates/noesis-bpf-loader",
+    "crates/noesis-kafka-wal",
+    "crates/noesis-redis-engine",
+    "crates/noesis-wasm-runtime",
+    "crates/noesis-grpc-cluster",
+    "crates/noesis-metrics",
+    "crates/noesis-security-kms",
+    "crates/noesis-cdc-engine",
+    "crates/noesis-tracing-otel",
+    "crates/noesis-raft-fuzz",
+    "crates/noesis-benchmarks",
+    "crates/noesis-orchestrator",
+    "crates/noesis-schema-migration",
+    "crates/noesis-vector-hnsw",
+    "crates/noesis-cli-admin",
+    "crates/noesis-smt-synthesizer",
+    "crates/noesis-soak-tester",
+    "crates/noesis-e2e-cluster",
+    "crates/noesis-consensus-recovery",
+    "crates/noesis-rate-limiter",
+    "crates/noesis-tee-attestation",
+    "crates/noesis-adaptive-jit",
+    "crates/noesis-zk-prover",
+    "crates/noesis-crdt-ledger",
+    "crates/noesis-zk-stark",
+    "crates/noesis-differential-fuzz",
+    "crates/noesis-hypergraph-provenance",
+    "crates/noesis-byzantine-bft",
+    "crates/noesis-temporal-bi-temporal",
+    "crates/noesis-hardware-enclave-bridge",
+    "crates/noesis-sovereign-audit-vault",
+    "crates/noesis-zero-leak-sanitizer",
+    "crates/noesis-autonomous-compensator",
+    "crates/noesis-invariant-synthesizer-pro",
+    "crates/noesis-verifiable-agent-runtime",
+    "crates/noesis-quantum-kyber",
+    "crates/noesis-formal-dsl",
+    "crates/noesis-zero-knowledge-mempool",
+    "crates/noesis-deterministic-sandbox",
+    "crates/noesis-realtime-settlement-engine",
+    "crates/noesis-ontology-kernel",
+    "crates/noesis-symbolic-sql",
+    "crates/noesis-clearing-house",
+    "crates/noesis-merkle-trie",
+]
+resolver = "2"
+
+[workspace.package]
+version = "2026.4.1"
+edition = "2021"
+authors = ["Apodictic Systems Team <systems@apodictic.ai>"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+tokio = { version = "1.38", features = ["full", "tracing"] }
+bytes = { version = "1.6", features = ["serde"] }
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "1.0"
+anyhow = "1.0"
+parking_lot = "0.12"
+crossbeam = "0.8"
+nix = { version = "0.29", features = ["sched", "net", "socket", "mman", "signal"] }
+clap = { version = "4.5", features = ["derive"] }
+crc32fast = "1.4"
+memmap2 = "0.9"
+rand = "0.8"
+bitflags = "2.5"
+byteorder = "1.5"

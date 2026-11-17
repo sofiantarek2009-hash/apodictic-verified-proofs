@@ -1,8 +1,22 @@
-name: Verify All Standalone Z3, Odoo-ETA, SDK & MCP Proofs
+name: Verify Z3, Live Postgres 17, Rust 55-Crate Workspace, SDK & MCP
 on: [push, pull_request, workflow_dispatch]
 jobs:
-  verify:
+  python-pg17-sdk-mcp:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: apodictic
+          POSTGRES_PASSWORD: apodictic_ci
+          POSTGRES_DB: apodictic_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -11,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt "psycopg[binary]>=3.1"
       - name: Run all 9 Gist Z3 & Odoo-ETA proof bundles
         run: |
           set -e
@@ -19,7 +33,18 @@ jobs:
             echo "=== Running $f ==="
             python3 "$f"
           done
-      - name: Run @apodictic/sdk production Z3, crash-durability & 20x concurrency tests
+      - name: Run Live PostgreSQL 17 + Z3 + SAVEPOINT integration test
+        run: PYTHONPATH=. python3 noesis_engine/tests/wire/test_live_postgres_17.py
+      - name: Run @apodictic/sdk production tests
         run: node packages/apodictic-sdk/test.mjs
-      - name: Run @apodictic/mcp-verifier production stdio proxy & serve tests
+      - name: Run @apodictic/mcp-verifier production tests
         run: node packages/apodictic-mcp-verifier/test.mjs
+
+  rust-55-crates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Compile and test all 55 Rust crates
+        working-directory: noesis_infra
+        run: cargo test --workspace

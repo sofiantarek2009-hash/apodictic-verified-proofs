@@ -1,0 +1,15 @@
+[package]
+name = "noesis-differential-fuzz"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+rand.workspace = true
+parking_lot.workspace = true
+byteorder.workspace = true

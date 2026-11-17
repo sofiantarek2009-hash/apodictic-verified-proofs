@@ -1,0 +1,13 @@
+[package]
+name = "noesis-raft-fuzz"
+version = "0.1.0"
+edition = "2021"
+description = "Jepsen-style deterministic network partition simulator, chaos fault injector, and Raft consensus model checker"
+
+[dependencies]
+noesis-raft-consensus = { path = "../noesis-raft-consensus" }
+rand = "0.8"
+parking_lot = "0.12"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
