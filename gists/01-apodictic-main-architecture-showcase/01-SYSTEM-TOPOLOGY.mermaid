@@ -1,13 +1,13 @@
 flowchart TB
     subgraph ClientSurface["Client, AI Agent & UI Layer (Next.js App Router)"]
         UI["Enterprise Portal & Proof Center\n(frontend/app/portal, /demo, SovereignProofCenter)"]
-        AGENT["Autonomous Financial Agent\n(SQL Queries, Odoo RPC, NetSuite, SAP OData, Wires)"]
+        AGENT["Autonomous Financial Agent\n(SQL Queries, Odoo 18-20 RPC/JSON-2, NetSuite, SAP OData, Wires)"]
     end
 
     subgraph ApiAndWireIngress["API Gateway & Wire Protocol Proxy Layer"]
-        NEXTAPI["Next.js /api/noesis/* Routes\nverify | deidentify | worm-vault | time-travel | proof-transcript"]
-        PGPROXY["noesis-wire-proxy (Rust / Python)\nPostgreSQL 3.0 Frame Codec ('Q','P','E','Z')\nSQLSTATE 40001 / 42501 Synthesis"]
-        JAILER["noesis-jailer & AF_VSOCK Bridge\nFirecracker MicroVM + 24-Syscall seccomp-bpf"]
+        NEXTAPI["Next.js /api/apodictic/* Routes\nverify | deidentify | worm-vault | time-travel | proof-transcript"]
+        PGPROXY["apodictic-wire-proxy (Rust / Python)\nPostgreSQL 3.0 Frame Codec ('Q','P','E','Z')\nSQLSTATE 40001 / 42501 Synthesis"]
+        FIRECRACKER["Firecracker KVM & AF_VSOCK Bridge\n(deploy/air-gapped/firecracker/vm-config.json + seccomp-24.json)"]
     end
 
     subgraph SecurityAndPrivacy["Zero-Leak Sanitization & Identity"]
@@ -23,7 +23,7 @@ flowchart TB
     end
 
     subgraph ClearingAndStorage["ERP Clearing, Consensus & Forensic Persistence"]
-        ERP["ERP Clearing & Saga Compensators\nOdoo 18 account.move.reversal | NetSuite Journal\n3-Way Match Z3 | Subset-Sum ISO 20022 Reconciler"]
+        ERP["ERP Clearing & Saga Compensators\nOdoo 18-20 account.move.reversal | NetSuite Journal\n3-Way Match Z3 | Subset-Sum ISO 20022 Reconciler"]
         WORM["SEC 17a-4 WORM Vault & MerkleAuditLedger\nSHA-256 Forward Hash Chain (7-Year Hold)"]
         MPT["Hexary Merkle-Patricia Trie & SQL:2011 Bi-Temporal Ledger\nO(log N) Inclusion/Exclusion Proofs + Benford/Smurfing Detector"]
         UPSTREAM[("Upstream Production PostgreSQL / ERP")]
@@ -42,7 +42,7 @@ flowchart TB
     Z3CORE --> STAT
     Z3CORE -->|"SAT + Proof Receipt"| ERP
     Z3CORE -->|"UNSAT -> SQLSTATE 40001 + Witness Patch"| PGPROXY
-    ERP --> JAILER
+    ERP --> FIRECRACKER
     ERP --> UPSTREAM
     Z3CORE --> WORM
     ERP --> WORM

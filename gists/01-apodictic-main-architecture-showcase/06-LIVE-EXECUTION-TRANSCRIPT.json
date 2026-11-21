@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "artifact_type": "APODICTIC_CRYPTOGRAPHIC_PROOF_OF_EXECUTION_TRANSCRIPT",
+    "timestamp_utc": "2026-11-21T11:24:33.642213+00:00",
+    "z3_prover_version": "5.4.1",
+    "python_runtime": "3.9.8",
+    "platform_arch": "Darwin-arm64",
+    "total_harness_execution_ms": 81.396,
+    "benchmark_100_iter_ms": {
+      "p50": 0.44,
+      "p95": 0.641,
+      "p99": 1.189
+    },
+    "master_transcript_sha256": "82d22e176dcb6bacc8232982378b7a620f32517dba3e2bcc2e51ad6a3aba26f7"
+  },
+  "subsystems": {
+    "1_zero_pii_gateway": {
+      "raw_input_len": 139,
+      "sanitized_payload": "UPDATE accounts SET balance = balance - 90000 WHERE iban = '<SYM_IBAN_1>' AND email = '<SYM_EMAIL_1>' AND tax_id = '<SYM_TAX_1>';",
+      "tokens_minted": 3,
+      "symbol_keys": [
+        "<SYM_IBAN_1>",
+        "<SYM_TAX_1>",
+        "<SYM_EMAIL_1>"
+      ],
+      "bijective_lossless_restore": true,
+      "latency_ms": 0.0426
+    },
+    "2_symbolic_sql_hoare_verifier": {
+      "insolvent_query_verdict": "UNSAT",
+      "insolvent_unsat_core": [
+        "INV_LIQUIDITY_FLOOR"
+      ],
+      "z3_optimize_deficit_usd": 10000.0,
+      "synthesized_compensating_sql": "UPDATE accounts SET balance = balance + 10000.0 WHERE account_id = 'ACCT_1';",
+      "solvent_proof_hash": "6e3f3d52f0d162a1f8a59b3aa1c8ba57c30fb1d666e0e0649d8981648fe8f0e7",
+      "pg_wire_sqlstate": "40001",
+      "latency_ms": 1.619
+    },
+    "3_multi_statement_guard_and_double_entry": {
+      "stacked_sql_verdict": "UNSAT",
+      "balanced_entry_verdict": "SAT",
+      "latency_ms": 1.3652
+    },
+    "4_kinetic_ontology_and_abac_sod": {
+      "carousel_fraud_cycles_detected": [
+        [
+          "SUB-US",
+          "SHELL-CY",
+          "SHELL-MT",
+          "SUB-US"
+        ]
+      ],
+      "self_approval_sod_decision": "DENY",
+      "self_approval_unsat_core": [
+        "POLICY_SEPARATION_OF_DUTIES"
+      ],
+      "cfo_approval_decision": "PERMIT",
+      "cfo_proof_hash": "659f45a41c22156c7f4b8095d7ba2841e3953d622b77acf95afb72e12529f64b",
+      "latency_ms": 2.7345
+    },
+    "5_statutory_asc606_and_pillar2_z3": {
+      "asc606_verdict": "SAT",
+      "oecd_pillar2_etr": 0.05,
+      "oecd_pillar2_top_up_tax_usd": 2500000.0,
+      "latency_ms": 1.7746
+    },
+    "6_basel3_lcr_optimize": {
+      "basel3_max_safe_payout_usd": 1150000.0,
+      "basel3_binding_covenant": "BASEL_III_LCR",
+      "latency_ms": 0.4415
+    },
+    "7_erp_3way_match": {
+      "phantom_invoice_verdict": "UNSAT",
+      "phantom_violated_rules": [
+        "3WAY_BILLED_WITHIN_RECEIVED_QTY"
+      ],
+      "latency_ms": 0.3619
+    },
+    "8_subset_sum_wire_reconciler": {
+      "lump_wire_reconciled": true,
+      "matched_open_invoices": [
+        "AR-102",
+        "AR-103"
+      ],
+      "implied_wire_fee_usd": 25.0,
+      "latency_ms": 1.9775
+    },
+    "9_mena_compound_tax_and_ecdsa": {
+      "eta_compound_t2_t1_total_minor": 119700,
+      "zatca_total_minor": 115000,
+      "naive_flat_vat_verdict": "UNSAT",
+      "signature_status": "ECDSA-P256+SHA-256 VERIFIED",
+      "certificate_sha256": "d560b76539946b4aa7fc0e0ff9179ef6bb0f8f6dfdf8d48b6d03eb593f76df97",
+      "latency_ms": 17.7067
+    },
+    "10_forensics_bitemporal_and_merkle_exclusion": {
+      "bitemporal_prior_audit_balance": 1000000,
+      "bitemporal_restated_balance": 1150000,
+      "structuring_alerts_triggered": [
+        "SMURFING_STRUCTURING_DETECTED"
+      ],
+      "sorted_neighbor_exclusion": {
+        "merkle_root": "fe65953049c70c02c9be95588925b5ec6d750f30ebdd09ca3e6431316833f698",
+        "target_key": "ACC-OFFSHORE-99",
+        "left_neighbor": "ACC-3090",
+        "right_neighbor": null,
+        "exclusion_verified": true
+      },
+      "worm_head_hash": "0215e108bed066b86b87cc7c99d52e586549b8a00a67b5fae1bd33ea386c8406",
+      "latency_ms": 0.0635
+    },
+    "11_policy_dag_and_checksum_dlp": {
+      "alice_cfo_approvers_sat": true,
+      "bob_cfo_approvers_sat": false,
+      "mod97_iban_valid": true,
+      "luhn_pan_checks": [
+        true,
+        false
+      ],
+      "latency_ms": 3.2177
+    },
+    "12_escrow_and_general_rfc6962": {
+      "escrow_hold_usd": 18500.0,
+      "available_balance_usd": 231500.0,
+      "leaf_count": 5,
+      "rfc6962_merkle_root": "0560c795bc4ec815397ffc63b49e9969beaa880ff3056ae1f66ce334db204d57",
+      "audit_path_siblings": [
+        "3df0354e8f9c9d8ea47c943f0411d534fb5eb1a7256c88f1e0b62156905f837a",
+        "03e7ec87a638221209dbc636611767c80226dba270bbdac882dfd99efbe7ecb5",
+        "83d24164152afb8d891cebd3eead95a27ead49af02856d520ac9fe62e27d7fee"
+      ],
+      "inclusion_verified": true,
+      "latency_ms": 0.7986
+    }
+  }
+}

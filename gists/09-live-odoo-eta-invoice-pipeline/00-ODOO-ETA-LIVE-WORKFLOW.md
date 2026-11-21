@@ -1,6 +1,6 @@
-# Live Stateful Odoo 18 (`account.move` / `account.move.reversal`) + Egypt ETA v1.0 Real Invoice Workflow
+# Live Stateful Odoo 18–20 (`account.move` / `account.move.reversal`) + Egypt ETA v1.0 Real Invoice Workflow
 
-> **Full Production Clearing Workflow**: Pairs real **Odoo 18 JSON-RPC 2.0** wire execution (`common.authenticate`, `account.move.create`, `action_post`, `account.move.reversal`, `res.partner`) against a relational SQLite WAL General Ledger with **Microsoft Z3 `5.4.1`** compound tax + double-entry proofs, **Zero-PII / OCR injection gating**, **Canonical Egypt ETA Document v1.0 SHA-256 serialization**, and **Payment-time `T4` Withholding Tax (`3%` on Net)** certificate issuance.
+> **Full Production Clearing Workflow**: Pairs real **Odoo 18 JSON-RPC 2.0 (`/jsonrpc`) and Odoo 19/20 JSON-2 (`/json/2/`)** wire execution (`common.authenticate`, `account.move.create`, `action_post`, `account.move.reversal`, `res.partner`) against a relational SQLite WAL General Ledger with **Microsoft Z3 `5.4.1`** compound tax + double-entry proofs, **Zero-PII / OCR injection gating**, **Canonical Egypt ETA Document v1.0 SHA-256 serialization (excluding `signatures`)**, and **Payment-time `T4` Withholding Tax (`3%` on Net)** certificate issuance.
 
 ---
 

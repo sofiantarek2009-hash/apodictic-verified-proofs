@@ -1,4 +1,4 @@
-name: Verify Public Z3 Proofs & Standalone Harness
+name: Verify Public Z3 Proofs, SDK & MCP Verifier
 on: [push, pull_request, workflow_dispatch]
 jobs:
   verify-public-proofs:
@@ -12,14 +12,15 @@ jobs:
         with:
           node-version: "22"
       - run: pip install -r requirements.txt
-      - name: Run all 9 standalone Z3 & Odoo-ETA proof bundles
+      - name: Run all 10 standalone Z3 & Odoo 18-20 proof bundles
         run: |
           set -e
           for f in gists/*/*.py; do
             echo "=== Running $f ==="
             python3 "$f"
           done
-      - name: Verify @apodictic/sdk & @apodictic/mcp-verifier packaging
+      - name: Install and run apodictic-sdk & apodictic-mcp-verifier test suites (including Zero-Python Z3 WASM)
         run: |
-          (cd packages/apodictic-sdk && npm pack --dry-run)
-          (cd packages/apodictic-mcp-verifier && npm pack --dry-run)
+          set -e
+          (cd packages/apodictic-sdk && npm install --no-audit --no-fund && npm test && npm pack --dry-run)
+          (cd packages/apodictic-mcp-verifier && npm install --no-audit --no-fund && npm test && APODICTIC_DISABLE_PYTHON=1 node ./bin/apodictic-mcp-verifier.mjs demo && npm pack --dry-run)

@@ -17,7 +17,7 @@ Before an AI assistant is allowed to change a single row in your database or app
 ### 2. An Unbribable Math Referee Checks Every Check Before the Ink Dries *(Formal Proof Engine)*
 - Normal software asks *another AI* to "double check" the first AI's work. Asking one guesser to check another guesser still fails on weird edge cases.
 - Instead, Apodictic turns the company's rules into **hard math**—and refuses to press "Send" unless 100% of the rules hold simultaneously:
-  - *"Will this payment drop our cash below the `$25,000` payroll reserve?"* $\to$ **Blocked before it hits the bank.**
+  - *"Will this payment drop our cash below the `$20,000` payroll reserve?"* $\to$ **Blocked before it hits the bank.**
   - *"Did the person who added this vendor also try to approve the payment?"* $\to$ **Blocked automatically.**
   - *"Did the invoice claim 10% VAT when the legal tax rate in this country is 14%?"* $\to$ **Blocked automatically.**
 

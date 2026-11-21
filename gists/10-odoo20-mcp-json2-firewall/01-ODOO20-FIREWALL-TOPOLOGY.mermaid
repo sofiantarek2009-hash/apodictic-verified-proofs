@@ -1,0 +1,30 @@
+flowchart TB
+    subgraph AgentLayer["Autonomous AI / MCP Client"]
+        MCP["MCP / LLM Agent\n(bearer_scope='mcp' | 'rpc')"]
+    end
+
+    subgraph ApodicticOdoo20Firewall["Apodictic Odoo 19/20 Pre-Execution Firewall"]
+        SCOPE["1. Scope & Protocol Gate\nBlock /json/2/db/* & Legacy XML-RPC\nEnforce mcp vs rpc + CFO Signature"]
+        SCHEMA["2. /doc-bearer/ OpenAPI Introspector\nGET /doc-bearer/account.move.json\nValidate Fields & X2many Tuples (0..6)"]
+        LOCK["3. Fiscal Lock & Hash Immutability Guard\nhard_lock_date | fiscalyear_lock_date\ninalterable_hash -> Force account.move.reversal"]
+        Z3LINE["4. Z3 5.4.1 Multi-Row Accounting Prover\nSum(debit_cents) == Sum(credit_cents)\nLine Mutex | amount_currency Sign Parity\nanalytic_distribution == 100%"]
+        WORM["5. SEC 17a-4 field_diff WORM Vault\nReplaces Removed Stored Chatter Tracking\nImmutable before -> proposed SHA-256 Chain"]
+    end
+
+    subgraph Odoo20Node["Odoo 19/20 Server (HTTP JSON-2)"]
+        DOC["GET /doc-bearer/<model>.json"]
+        JSON2["POST /json/2/<model>/<method>\nHeaders: Authorization: Bearer ...\nX-Odoo-Database: prod_v20"]
+    end
+
+    MCP --> SCOPE
+    SCOPE -->|"Removed db RPC / Un-signed mcp escalation"| BLOCK["UNSAT VETO (0 ERP Writes)\nEmit reversalHint + Audit Block"]
+    SCOPE --> SCHEMA
+    DOC -->|"Live OpenAPI 3.0 Schema"| SCHEMA
+    SCHEMA -->|"Unknown Field / Bad X2m Tuple"| BLOCK
+    SCHEMA --> LOCK
+    LOCK -->|"Post-Lock / Hashed Move Write"| BLOCK
+    LOCK --> Z3LINE
+    Z3LINE -->|"UNSAT Line/Analytic/FX Parity"| BLOCK
+    Z3LINE -->|"SAT + Proof Receipt"| WORM
+    WORM -->|"Verified HTTP POST"| JSON2
+    BLOCK --> WORM

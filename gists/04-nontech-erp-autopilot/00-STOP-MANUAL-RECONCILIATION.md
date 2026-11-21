@@ -12,7 +12,7 @@ In a real business, financial records never sit cleanly in one place:
 - **Vendor bills** arrive by email or PDF.
 - **Cash wires** land in the corporate bank account as lump sums with wire fees deducted.
 
-Human accountants spend weeks checking: *"Did we actually receive all 10 servers before paying the vendor's 10-server bill?"* and *"Which 3 customer invoices make up this `$84,975` mystery wire from JPMorgan?"*
+Human accountants spend weeks checking: *"Did we actually receive all 10 servers before paying the vendor's 10-server bill?"* and *"Which subset of customer invoices make up this `$84,975` mystery wire from JPMorgan?"*
 
 ---
 

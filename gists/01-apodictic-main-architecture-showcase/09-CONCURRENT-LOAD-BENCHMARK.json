@@ -1,6 +1,6 @@
 {
   "benchmark": "APODICTIC_CONCURRENT_LOAD_AND_MEMORY_V1",
-  "reproducible_command": "PYTHONPATH=. python3 noesis_engine/tests/benchmarks/run_concurrent_load_benchmark.py",
+  "reproducible_command": "PYTHONPATH=. python3 apodictic_engine/tests/benchmarks/run_concurrent_load_benchmark.py",
   "config": {
     "total_requests": 200,
     "concurrent_workers": 8,

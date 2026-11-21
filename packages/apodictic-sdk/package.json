@@ -1,12 +1,18 @@
 {
-  "name": "@apodictic/sdk",
-  "version": "3.8.0",
+  "name": "apodictic-sdk",
+  "version": "3.9.0",
   "description": "Production TypeScript/Node SDK for Apodictic Pre-Commit Z3 Verification & Zero-PII Symbolic Gateway",
+  "homepage": "https://apodictic.dev",
+  "author": "Sofian Mousa <sofianmousa@apodictic.dev>",
   "type": "module",
   "main": "./src/index.mjs",
   "types": "./src/index.d.ts",
   "files": [
-    "src/"
+    "src/*.mjs",
+    "src/*.py",
+    "src/*.d.ts",
+    "src/*.d.mts",
+    "README.md"
   ],
   "exports": {
     ".": {
@@ -17,5 +23,9 @@
   "scripts": {
     "test": "node ./test.mjs"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.17",
+    "z3-solver": "^5.4.1"
+  }
 }

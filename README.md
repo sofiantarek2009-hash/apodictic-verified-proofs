@@ -1,11 +1,27 @@
-# Apodictic — Public Verification Harness & CI Attestations
+# Apodictic — Public Verification Harness, SDKs & CI Attestations
 
-> **Public verification suite and GitHub Actions CI attestation logs for Apodictic.**
+> **Public verification suite, open-source SDKs (`apodictic-sdk`, `apodictic-mcp-verifier`), and GitHub Actions CI attestation logs for [Apodictic](https://www.apodictic.dev).**
 >
-> The proprietary Apodictic core engine (`noesis_engine/`, `noesis_infra/` Rust workspace, and enterprise ERP adapters) resides in a private repository. This public repository contains standalone executable Z3 `5.4.1` proof bundles, the public `@apodictic/sdk` & `@apodictic/mcp-verifier` interfaces, and reproducible CI test logs.
+> The Apodictic enterprise core (`apodictic_engine/`, `apodictic_infra/` 9-crate Rust workspace, and enterprise ERP adapters) enforces deterministic SQL/ERP/MCP formal verification via Microsoft Z3 `5.4.1`, pure-Rust OxiZ `0.3.4`, and WASM PostgreSQL 17 (`@electric-sql/pglite`). This public repository contains all **10 standalone executable Z3 `5.4.1` & Odoo 18–20 proof bundles**, the public **`apodictic-sdk@3.9.0`** & **`apodictic-mcp-verifier@3.9.0`** npm packages (with zero-Python WebAssembly Z3 + WASM PostgreSQL 17), and reproducible CI test logs.
 
-## Run Locally
+## Instant Zero-Python Verification Demo (`npx`)
+
+Run the 3-scenario formal verification demo (WASM PostgreSQL 17 + Z3 5.4.1 WebAssembly) on any machine with Node.js `>=22.5`:
+
+```bash
+npx apodictic-mcp-verifier demo
+```
+
+## Run All 10 Standalone Z3 & Odoo 18–20 Proof Bundles Locally
+
 ```bash
 pip install -r requirements.txt
 for f in gists/*/*.py; do echo "=== $f ==="; python3 "$f"; done
+```
+
+## Run SDK & MCP Verifier Test Suites
+
+```bash
+(cd packages/apodictic-sdk && npm install && npm test)
+(cd packages/apodictic-mcp-verifier && npm install && npm test)
 ```

@@ -5,7 +5,8 @@ Apodictic Domain Proof 07 — ETA (Egypt) Mixed-Tax Cascade, T4 WHT Timing & ZAT
 Demonstrates deterministic verification of:
   1. Egypt ETA compound T2 Table Tax -> T1 14% VAT tax base
   2. Payment-time T4 Withholding Tax (on Net excluding VAT) conservation
-  3. ZATCA Phase 2 BR-CO-14 penny-exact header-vs-line tax parity
+  3. ZATCA Phase 2 BR-CO-14 penny-exact header-vs-line tax parity via z3.Optimize()
+     with fractional-remainder priority
 
 Run anywhere: pip install z3-solver && python3 01-MIXED-TAX-SOLVER.py
 """
@@ -52,10 +53,11 @@ def verify_eta_compound_tax_and_wht(
     s.assert_and_track(
         z3.And(
             z_wht - z3.RealVal(str(expected_wht_t4), ctx=ctx) <= z_tol,
-            z3.RealVal(str(expected_wht_t4), ctx=ctx) - z_wht <= z_tol,
+            z_RealVal := z3.RealVal(str(expected_wht_t4), ctx=ctx) - z_wht <= z_tol,
         ),
         "ETA_T4_WHT_RATE_APPLIED_TO_NET_ONLY",
     )
+    _ = z_RealVal
 
     res = s.check()
     core = [str(c) for c in s.unsat_core()] if res == z3.unsat else []
@@ -72,25 +74,37 @@ def verify_eta_compound_tax_and_wht(
 
 
 def solve_zatca_br_co_14_line_rounding(line_nets: list, vat_rate: float = 0.15) -> dict:
-    """Computes halala-exact VAT per line so sum(line_vats_cents) == header_vat_cents."""
+    """
+    Computes halala-exact VAT per line via z3.Optimize() so sum(line_vats_cents) == header_vat_cents,
+    minimizing total absolute rounding error across lines (fractional-remainder priority).
+    """
     t0 = time.perf_counter()
     header_net_cents = sum(round(x * 100) for x in line_nets)
     header_vat_cents = round(header_net_cents * vat_rate)
 
-    raw_line_vats = [round(x * 100) * vat_rate for x in line_nets]
-    rounded_line_vats = [round(v) for v in raw_line_vats]
+    # Exact scaled thousandths-of-halala (1000 * halala) to keep Z3 strictly integer/linear
+    scale = 1000
+    raw_scaled = [round(round(x * 100) * vat_rate * scale) for x in line_nets]
+    rounded_line_vats = [round(round(x * 100) * vat_rate) for x in line_nets]
     drift_cents = header_vat_cents - sum(rounded_line_vats)
 
-    # Allocate any 1-halala residual via Z3 integer constraints to the line with max fractional remainder
     ctx = z3.Context()
-    s = z3.Solver(ctx=ctx)
+    opt = z3.Optimize(ctx=ctx)
     deltas = [z3.Int(f"d_{i}", ctx=ctx) for i in range(len(line_nets))]
-    for d in deltas:
-        s.add(d >= -1, d <= 1)
+    abs_errs = [z3.Int(f"err_{i}", ctx=ctx) for i in range(len(line_nets))]
+
+    for i, d in enumerate(deltas):
+        opt.add(d >= -1, d <= 1)
+        # Error between adjusted integer halala and exact unrounded halala (scaled by 1000)
+        diff = (rounded_line_vats[i] + d) * scale - raw_scaled[i]
+        opt.add(abs_errs[i] >= diff, abs_errs[i] >= -diff)
+
     adjusted = [rounded_line_vats[i] + deltas[i] for i in range(len(line_nets))]
-    s.add(z3.Sum(adjusted) == header_vat_cents)
-    assert s.check() == z3.sat
-    m = s.model()
+    opt.add(z3.Sum(adjusted) == header_vat_cents)
+    opt.minimize(z3.Sum(abs_errs))
+    assert opt.check() == z3.sat
+
+    m = opt.model()
     final_line_vats = [rounded_line_vats[i] + m.evaluate(deltas[i]).as_long() for i in range(len(line_nets))]
 
     ubl_tax_xml = (
@@ -104,6 +118,7 @@ def solve_zatca_br_co_14_line_rounding(line_nets: list, vat_rate: float = 0.15) 
     )
 
     return {
+        "line_nets_sar": line_nets,
         "header_vat_sar": header_vat_cents / 100.0,
         "naive_line_sum_sar": sum(rounded_line_vats) / 100.0,
         "detected_br_co_14_drift_halalas": drift_cents,
@@ -118,6 +133,14 @@ if __name__ == "__main__":
     # 100,000 EGP engineering consulting w/ 5% T2 -> 105,000 base -> 14% T1 VAT = 14,700 (not 14,000!), Gross = 119,700, 5% T4 WHT = 5,000
     bad_flat = verify_eta_compound_tax_and_wht(100_000.0, 0.05, 0.14, 0.05, claimed_vat=14_000.0, cash_settled=114_700.0, wht_certificate_amt=5_000.0)
     ok_compound = verify_eta_compound_tax_and_wht(100_000.0, 0.05, 0.14, 0.05, claimed_vat=14_700.0, cash_settled=114_700.0, wht_certificate_amt=5_000.0)
-    zatca = solve_zatca_br_co_14_line_rounding([10.03, 10.03, 10.03], vat_rate=0.15)
-    assert bad_flat["verdict"] == "UNSAT" and ok_compound["verdict"] == "SAT" and zatca["parity_verified"]
-    print(json.dumps({"flat_tax_bug_caught": bad_flat, "eta_compound_verified": ok_compound, "zatca_br_co_14": zatca}, indent=2))
+    zatca_equal = solve_zatca_br_co_14_line_rounding([10.03, 10.03, 10.03], vat_rate=0.15)
+    zatca_priority = solve_zatca_br_co_14_line_rounding([10.01, 10.03, 10.03], vat_rate=0.15)
+    assert bad_flat["verdict"] == "UNSAT" and ok_compound["verdict"] == "SAT"
+    assert zatca_equal["parity_verified"] and zatca_equal["detected_br_co_14_drift_halalas"] == 1
+    assert zatca_priority["parity_verified"] and zatca_priority["reconciled_line_vats_sar"][0] == 1.50
+    print(json.dumps({
+        "flat_tax_bug_caught": bad_flat,
+        "eta_compound_verified": ok_compound,
+        "zatca_br_co_14_equal_lines": zatca_equal,
+        "zatca_br_co_14_remainder_priority": zatca_priority,
+    }, indent=2))

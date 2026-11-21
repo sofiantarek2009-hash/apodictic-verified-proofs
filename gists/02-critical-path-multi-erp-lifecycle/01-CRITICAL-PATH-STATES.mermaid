@@ -1,6 +1,6 @@
 flowchart LR
     subgraph Ingress["1. Wire & ERP Ingress"]
-        PG["Raw PG 3.0 TCP Stream\nmsg='Q' length SQL\\0"] --> WIRE["noesis-wire-proxy\nWireCodec::decode()"]
+        PG["Raw PG 3.0 TCP Stream\nmsg='Q' length SQL\\0"] --> WIRE["apodictic-wire-proxy\nWireCodec::decode()"]
         ODOO_IN["Odoo 18 JSON-RPC\naccount.move.create"] --> DLP
         NS_IN["NetSuite SuiteTalk\nVendorBill / Journal"] --> DLP
         SAP_IN["SAP S/4HANA OData\nA_SupplierInvoice"] --> DLP
@@ -10,10 +10,10 @@ flowchart LR
     WIRE --> DLP["2. ZeroPIIGateway\nIBAN/TaxID/Card -> <SYM_*>\n0.013ms P50 (Bijective Vault)"]
 
     DLP --> PARSE["3. SqlAstCompiler & SSA Lifter\nExtract tables, deltas, WHERE bounds"]
-    PARSE --> Z3["4. noesis-z3-engine (Z3 5.4.1)\nQF_LRA Solvency + VAT + SoD\n3-Way Match + Basel III Optimize"]
+    PARSE --> Z3["4. apodictic-z3-engine (Z3 5.4.1)\nQF_LRA Solvency + VAT + SoD\n3-Way Match + Basel III Optimize"]
 
     Z3 -->|"UNSAT + unsat_core"| BLOCK["VETO BEFORE COMMIT\n- PG Wire 'E' SQLSTATE 40001/42501\n- Odoo account.move.reversal\n- Compensating SQL Witness Patch"]
     Z3 -->|"SAT + SHA-256 Proof"| COMMIT["STAGE ATOMIC COMPENSATOR\n- SQL SAVEPOINT (<38ms SLA)\n- ISO 20022 pain.001 Clearing"]
 
-    BLOCK --> VAULT["5. noesis-sovereign-audit-vault\nSEC 17a-4 Forward Hash Chain\n+ Hexary Merkle-Patricia Root\n+ SQL:2011 Bi-Temporal Snapshot"]
+    BLOCK --> VAULT["5. apodictic-audit-vault\nSEC 17a-4 Forward Hash Chain\n+ ECDSA P-256 Signatures\n+ SQL:2011 Bi-Temporal Snapshot"]
     COMMIT --> VAULT

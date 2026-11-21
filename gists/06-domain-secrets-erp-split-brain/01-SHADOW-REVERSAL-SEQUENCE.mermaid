@@ -1,16 +1,16 @@
 sequenceDiagram
     participant Agent as AI Settlement Agent
-    participant Noesis as Noesis Pre-Commit Gate (Z3 5.4.1)
+    participant Apodictic as Apodictic Pre-Commit Gate (Z3 5.4.1)
     participant Odoo as Odoo 18 GL (Locked Posting Sequence)
     participant NetSuite as NetSuite FX Treasury
 
-    Agent->>Noesis: Batch Settlement ($40,000 USD -> EGP @ T1 rate 49.35, original invoice booked @ T0 49.20)
-    Noesis->>Noesis: Check Fiscal Period Lock + Triangular FX Conservation (Delta = 6,000 EGP)
+    Agent->>Apodictic: Batch Settlement ($40,000 USD -> EGP @ T1 rate 49.35, original invoice booked @ T0 49.20)
+    Apodictic->>Apodictic: Check Fiscal Period Lock + Triangular FX Conservation (Delta = 6,000 EGP)
 
     alt Naive Retry / Unadjusted Amount Reversal
-        Noesis-->>Agent: UNSAT ['INV_FX_REVALUATION_IMBALANCE_6000_EGP'] -> Blocked before ERP mutation
+        Apodictic-->>Agent: UNSAT ['INV_FX_REVALUATION_IMBALANCE_6000_EGP'] -> Blocked before ERP mutation
     else Exact Base-Currency Compensated Entry
-        Noesis->>Odoo: Stage account.move.reversal (preserves T0 rate 49.20 + realized FX gain/loss 6,000 EGP line)
-        Odoo-->>Noesis: Reversal Posted Cleanly (0 orphan reconcile links)
-        Noesis->>NetSuite: Commit Paired Intercompany Entry (Debits == Credits in base & functional FX)
+        Apodictic->>Odoo: Stage account.move.reversal (preserves T0 rate 49.20 + realized FX gain/loss 6,000 EGP line)
+        Odoo-->>Apodictic: Reversal Posted Cleanly (0 orphan reconcile links)
+        Apodictic->>NetSuite: Commit Paired Intercompany Entry (Debits == Credits in base & functional FX)
     end

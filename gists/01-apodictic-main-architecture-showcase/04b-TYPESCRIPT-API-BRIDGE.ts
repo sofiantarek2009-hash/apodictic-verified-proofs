@@ -1,8 +1,8 @@
 /**
  * Apodictic — TypeScript & Next.js App Router Edge Bridge (Verified Excerpts)
  * Physical Sources:
- *   - frontend/app/api/noesis/verify/route.ts  (Live Z3 5.4.1 subprocess & daemon bridge)
- *   - frontend/lib/noesis-verifier.ts          (Zero-PII tokenization & SMT-LIB2 AST builder)
+ *   - frontend/app/api/apodictic/verify/route.ts  (Live Z3 5.4.1 subprocess & daemon bridge)
+ *   - frontend/lib/apodictic-verifier.ts          (Zero-PII tokenization & SMT-LIB2 AST builder)
  *   - frontend/lib/worm-vault-client.ts        (SEC 17a-4 WORM SHA-256 forward hash chain)
  */
 
@@ -23,7 +23,7 @@ export interface VerificationResultSummary {
 
 /**
  * Compiles request inputs into standardized SMT-LIB2 QF_LRA constraints
- * before dispatching to the Z3 5.4.1 theorem prover (`frontend/lib/noesis-verifier.ts`).
+ * before dispatching to the Z3 5.4.1 theorem prover (`frontend/lib/apodictic-verifier.ts`).
  */
 export function compileFinancialSmt2(params: {
   amount: number

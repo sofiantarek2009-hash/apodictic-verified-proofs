@@ -15,11 +15,9 @@
   $$\text{Cash\_Paid} + \text{WHT}_{T4} == \text{Gross\_Invoice\_Receivable}$$
 
 ### 3. The 1-Halala / 1-Piastre Rounding Drift (`ZATCA BR-CO-14`)
-- Suppose an invoice has `7` line items each priced at `33.33 SAR` with `15% VAT` (`4.9995 SAR` per line):
-  - Sum of individually rounded line taxes (`5.00 * 7`) = **`35.00 SAR`**.
-  - Header tax calculated from header net (`233.31 * 0.15`) = **`34.9965 -> 35.00 SAR`**, whereas on `3` lines of `10.03`:
-    - Per-line VAT: `1.5045 -> 1.50 * 3 = 4.50 SAR`
-    - Header VAT: `30.09 * 0.15 = 4.5135 -> 4.51 SAR` (**`0.01 SAR` mismatch!**)
+- Suppose an invoice has `3` line items each priced at `10.03 SAR` with `15% VAT` (`1.5045 SAR` per line):
+  - Sum of individually rounded line taxes (`1.50 * 3`) = **`4.50 SAR`**.
+  - Header tax calculated from header net (`30.09 * 0.15 = 4.5135`) = **`4.51 SAR`** (**`0.01 SAR` / 1-halala mismatch!**)
 - ZATCA Phase 2 immediately rejects the UBL 2.1 XML invoice under rule **`BR-CO-14`** because document-level VAT total differs from the sum of rounded line VAT totals by `0.01 SAR`.
 
 Apodictic solves the exact halala/piastre distribution and `T1/T2/T4` cash conservation inside Z3 `QF_LRA` before signing the invoice UUID XML.

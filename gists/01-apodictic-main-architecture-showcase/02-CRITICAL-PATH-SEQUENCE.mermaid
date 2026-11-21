@@ -1,10 +1,10 @@
 sequenceDiagram
     autonumber
     actor Agent as Autonomous AI / ERP Client
-    participant Wire as noesis-wire-proxy (PG 3.0 TCP)
+    participant Wire as apodictic-wire-proxy (PG 3.0 TCP)
     participant DLP as ZeroPIIGateway / DeepDlpEngine
     participant AST as SqlAstCompiler & SSA Lifter
-    participant Z3 as noesis-z3-engine (Z3 5.4.1 QF_LRA)
+    participant Z3 as apodictic-z3-engine (Z3 5.4.1 QF_LRA)
     participant Saga as ERP Compensator / Savepoint
     participant Vault as SEC 17a-4 WORM Audit Vault
     participant DB as Upstream Postgres / Odoo 18 / NetSuite

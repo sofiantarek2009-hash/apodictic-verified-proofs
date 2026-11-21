@@ -1,17 +1,19 @@
 {
-  "name": "@apodictic/mcp-verifier",
-  "version": "3.8.0",
+  "name": "apodictic-mcp-verifier",
+  "version": "3.9.0",
   "description": "Pre-commit MCP JSON-RPC tools/call firewall & SYM_* privacy interceptor",
+  "homepage": "https://apodictic.dev",
+  "author": "Sofian Mousa <sofianmousa@apodictic.dev>",
   "type": "module",
   "bin": {
-    "apodictic-mcp-verifier": "./bin/apodictic-mcp-verifier.mjs"
+    "apodictic-mcp-verifier": "bin/apodictic-mcp-verifier.mjs"
   },
   "files": [
     "bin/",
     "README.md"
   ],
   "dependencies": {
-    "@apodictic/sdk": "^3.8.0"
+    "apodictic-sdk": "^3.9.0"
   },
   "scripts": {
     "test": "node ./test.mjs"

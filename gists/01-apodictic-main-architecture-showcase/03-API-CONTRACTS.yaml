@@ -6,7 +6,7 @@ info:
     Live Next.js App Router API contracts backed by Microsoft Z3 5.4.1, ZeroPIIGateway,
     SEC 17a-4 WORM hash chains, SQL:2011 Bi-Temporal Accounting, and Merkle-Patricia proofs.
 paths:
-  /api/noesis/verify:
+  /api/apodictic/verify:
     post:
       summary: Formal Z3 SMT Pre-Commit Verification & Zero-PII Sanitization Gate
       requestBody:
@@ -48,17 +48,19 @@ paths:
                   example: 0.14
                 targetSystem:
                   type: string
-                  enum: [odoo_v18, postgresql_wal]
+                  enum: [odoo_v18, odoo_v19, odoo_v20, postgresql_wal, stripe, netsuite]
                 executionDag:
                   type: array
                   items:
                     type: object
                     properties:
-                      name: { type: string }
+                      stepId: { type: string }
+                      action: { type: string }
+                      targetSystem: { type: string }
                       amount: { type: number }
       responses:
         "200":
-          description: Formal SAT/UNSAT verification verdict with SMT-LIB2 formula, counterexample, and rollback handle
+          description: Formal SAT/UNSAT verification verdict with SMT-LIB2 formula, invariants, counterexample, counterfactual patch, and rollback/audit handles
           content:
             application/json:
               schema:
@@ -67,15 +69,38 @@ paths:
                   verdict: { type: string, enum: [SAT, UNSAT] }
                   verified: { type: boolean }
                   engine: { type: string, example: "z3-5.4.1-smt" }
+                  ast_engine: { type: string, example: "sqlglot-postgres" }
                   execution_time_ms: { type: number }
                   z3_solve_ms: { type: number }
                   filter_latency_ms: { type: number }
+                  simd_latency_ms: { type: number }
                   tokenized_payload: { type: string }
+                  symbol_map: { type: array, items: { type: object } }
                   pii_entities_redacted: { type: integer }
                   violations: { type: array, items: { type: string } }
+                  invariants:
+                    type: object
+                    properties:
+                      INV_LIQUIDITY_FLOOR: { type: boolean }
+                      INV_NON_NEGATIVE: { type: boolean }
+                      INV_AUTONOMOUS_CAP: { type: boolean }
+                      INV_ATOMIC_REVERSAL: { type: boolean }
+                      INV_STATUTORY_VAT: { type: boolean }
+                  unsat_core: { type: array, items: { type: string } }
+                  counterexample:
+                    type: object
+                    properties:
+                      post_balance: { type: number }
+                      required_min_reserve: { type: number }
+                      liquidity_shortfall: { type: number }
+                      uncompensated_destructive_action: { type: ["string", "null"] }
+                  counterfactual_patch:
+                    type: ["object", "null"]
+                    description: Z3-synthesized minimal corrective delta when verdict is UNSAT
+                  compensating_sql_diff: { type: string }
                   smt_formula: { type: string }
                   proof_hash: { type: string }
-                  compensating_sql_diff: { type: string }
+                  is_destructive: { type: boolean }
                   rollback_connector:
                     type: object
                     properties:
@@ -84,8 +109,15 @@ paths:
                       compensable: { type: boolean }
                       dispatch_ms: { type: number }
                       checkpoint_id: { type: string }
+                      mode: { type: string }
+                  rollbackBatchId: { type: ["string", "null"] }
+                  auditBlock:
+                    type: ["object", "null"]
+                    properties:
+                      block_index: { type: integer }
+                      entry_hash: { type: string }
 
-  /api/noesis/deidentify:
+  /api/apodictic/deidentify:
     post:
       summary: Deterministic Bijective Zero-PII & Secret Sanitization Gateway
       requestBody:
@@ -111,7 +143,7 @@ paths:
                   bytes_removed: { type: integer }
                   latency_ms: { type: number }
 
-  /api/noesis/worm-vault:
+  /api/apodictic/worm-vault:
     get:
       summary: Inspect latest SEC 17a-4 WORM chain records and integrity verification status
       responses:
@@ -131,7 +163,7 @@ paths:
                 payload: { type: string }
                 metadata: { type: object }
 
-  /api/noesis/time-travel:
+  /api/apodictic/time-travel:
     post:
       summary: SQL:2011 Bi-Temporal Point-in-Time Accounting Query
       requestBody:
@@ -146,12 +178,12 @@ paths:
                 valid_time: { type: integer, example: 2500 }
                 system_time: { type: integer, example: 2000 }
 
-  /api/noesis/proof-transcript:
+  /api/apodictic/proof-transcript:
     get:
-      summary: Execute live Z3 5.4.1 6-subsystem verification harness and emit signed SHA-256 transcript
+      summary: Execute live Z3 5.4.1 verification harness and emit signed SHA-256 transcript
       responses:
         "200":
-          description: Tamper-evident JSON execution transcript across all deep moats
+          description: Tamper-evident JSON execution transcript across all verification subsystems
           headers:
             X-Apodictic-Master-SHA256:
               schema: { type: string }
