@@ -286,44 +286,52 @@ try {
 
   // 17. Native Rust Daemon Fast-Path (engine: 'rust', zero Python, libz3 C FFI + pgoutput CDC)
   const rustGw = new SymbolicGateway({ engine: 'rust', forbidRawLiterals: true });
-  try {
-    const pgoutputBeginHex = '42' + '0000000001000000' + '0000000000000000' + '0000002a';
-    const rustSat = await rustGw.verifyMutation({
-      sql: "UPDATE vendor_disbursements SET amount = 18500 WHERE vendor_iban = 'DE89370400440532013000' AND id = 9;",
-      accountId: 'rust_fastpath_1',
-      amount: 18500,
-      currentBalance: 250000,
-      minReserve: 50000,
-      maxAutonomousLimit: 50000,
-      pgoutputHex: pgoutputBeginHex,
-    });
-    assert.equal(rustSat.verified, true);
-    assert.equal(rustSat.verdict, 'SAT');
-    assert.equal(rustSat.engine, 'apodictic-rust-daemon-libz3-ffi');
-    assert.ok(!rustSat.sanitizedSql.includes('DE89370400440532013000'));
-    assert.equal(rustSat.pgoutputDecoded?.ok, true);
-    assert.equal(rustSat.pgoutputDecoded?.message?.Begin?.xid, 42);
+  if (rustGw._resolveRustKernelPath()) {
+    try {
+      const pgoutputBeginHex = '42' + '0000000001000000' + '0000000000000000' + '0000002a';
+      const rustSat = await rustGw.verifyMutation({
+        sql: "UPDATE vendor_disbursements SET amount = 18500 WHERE vendor_iban = 'DE89370400440532013000' AND id = 9;",
+        accountId: 'rust_fastpath_1',
+        amount: 18500,
+        currentBalance: 250000,
+        minReserve: 50000,
+        maxAutonomousLimit: 50000,
+        pgoutputHex: pgoutputBeginHex,
+      });
+      assert.equal(rustSat.verified, true);
+      assert.equal(rustSat.verdict, 'SAT');
+      assert.equal(rustSat.engine, 'apodictic-rust-daemon-libz3-ffi');
+      assert.ok(!rustSat.sanitizedSql.includes('DE89370400440532013000'));
+      assert.equal(rustSat.pgoutputDecoded?.ok, true);
+      assert.equal(rustSat.pgoutputDecoded?.message?.Begin?.xid, 42);
 
-    const rustUnsat = await rustGw.verifyMutation({
-      sql: 'UPDATE vendor_disbursements SET amount = 190000 WHERE id = 10;',
-      accountId: 'rust_fastpath_1',
-      amount: 190000,
-      currentBalance: 250000,
-      minReserve: 50000,
-      maxAutonomousLimit: 50000,
-      cfoSigned: false,
-    });
-    assert.equal(rustUnsat.verified, false);
-    assert.equal(rustUnsat.verdict, 'UNSAT');
+      const rustUnsat = await rustGw.verifyMutation({
+        sql: 'UPDATE vendor_disbursements SET amount = 190000 WHERE id = 10;',
+        accountId: 'rust_fastpath_1',
+        amount: 190000,
+        currentBalance: 250000,
+        minReserve: 50000,
+        maxAutonomousLimit: 50000,
+        cfoSigned: false,
+      });
+      assert.equal(rustUnsat.verified, false);
+      assert.equal(rustUnsat.verdict, 'UNSAT');
 
-    const rustDrop = await rustGw.verifyMutation({
-      sql: 'DROP TABLE vendor_disbursements;',
-      accountId: 'rust_fastpath_1',
-    });
-    assert.equal(rustDrop.verified, false);
-    assert.equal(rustDrop.verdict, 'UNSAT');
-  } finally {
-    await rustGw.close();
+      const rustDrop = await rustGw.verifyMutation({
+        sql: 'DROP TABLE vendor_disbursements;',
+        accountId: 'rust_fastpath_1',
+      });
+      assert.equal(rustDrop.verified, false);
+      assert.equal(rustDrop.verdict, 'UNSAT');
+    } finally {
+      await rustGw.close();
+    }
+  } else {
+    await assert.rejects(
+      () => rustGw.verifyMutation({ sql: 'SELECT 1;' }),
+      /Native apodictic_rust_kernel binary not found/,
+      'Standalone npm install without native Rust binary must explicitly fail-closed when engine="rust"'
+    );
   }
 
   // 18. PGlite WASM Shadow Postgres ("Execute-Then-Prove") + Hidden Trigger Drain & Subquery Detection
