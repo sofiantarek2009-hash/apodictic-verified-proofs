@@ -19,8 +19,11 @@ jobs:
             echo "=== Running $f ==="
             python3 "$f"
           done
+      - name: Verify 22-artifact SHA-256 evidence manifest
+        run: (cd evidence && sha256sum -c manifest.sha256)
       - name: Install and run apodictic-sdk & apodictic-mcp-verifier test suites (including Zero-Python Z3 WASM)
         run: |
           set -e
           (cd packages/apodictic-sdk && npm install --no-audit --no-fund && npm test && npm pack --dry-run)
           (cd packages/apodictic-mcp-verifier && npm install --no-audit --no-fund && npm test && APODICTIC_DISABLE_PYTHON=1 node ./bin/apodictic-mcp-verifier.mjs demo && npm pack --dry-run)
+          node scripts/agent-self-heal-benchmark.mjs

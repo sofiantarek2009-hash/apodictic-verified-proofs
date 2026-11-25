@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-11-25T14:52:01.718Z",
+  "benchmark": "100-Case Z3 Optimize Counterfactual Self-Healing vs Blind Retry",
+  "status": "PASS",
+  "engine": "z3-5.4.1-wasm-optimize",
+  "total_cases": 100,
+  "breakdown": {
+    "reserve_floor_breach": 35,
+    "autonomous_cap_breach": 35,
+    "combined_reserve_and_cap_breach": 15,
+    "negative_amount_sql_attack": 15
+  },
+  "results": {
+    "initial_invalid_blocked": 100,
+    "guided_one_shot_repaired": 100,
+    "guided_one_shot_rate_pct": 100,
+    "blind_one_shot_repaired": 0,
+    "blind_one_shot_rate_pct": 0,
+    "blind_three_shot_repaired": 1,
+    "blind_three_shot_rate_pct": 1,
+    "negative_cases_clamped_to_zero": 15,
+    "unsafe_positive_repairs_on_negative": 0,
+    "latency_p50_ms": 5.904,
+    "latency_p95_ms": 6.963
+  }
+}

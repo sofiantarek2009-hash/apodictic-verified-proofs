@@ -1,10 +1,18 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectMcpEnvelope, scanApodicticMcpToolGuard } from './bin/apodictic-mcp-verifier.mjs';
+import {
+  computeApprovalTxDigest,
+  createOdooReverseProxyServer,
+  inspectMcpEnvelope,
+  scanApodicticMcpToolGuard,
+  signEd25519ApprovalToken,
+} from './bin/apodictic-mcp-verifier.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BIN = path.join(HERE, 'bin', 'apodictic-mcp-verifier.mjs');
@@ -285,7 +293,180 @@ rl.on('line', (l) => {
   });
   assert.ok('flushed_count' in flushRes.result.structuredContent);
 
-  console.log('✓ @apodictic/mcp-verifier 8-tool spec handshake, schema validation, payload guard, wrap firewall, policy DAG, RFC 6962, and Z3 tests passed');
+  // 7. Single-use tx_digest-bound Ed25519 Approval Token (1 pass -> replay blocked -> tamper rejected)
+  const { publicKey: edPubPem, privateKey: edPrivPem } = crypto.generateKeyPairSync('ed25519', {
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+  const bigSql = 'UPDATE vendor_disbursements SET amount = 90000 WHERE id = 9901;';
+  const bigDigest = computeApprovalTxDigest(bigSql, 90000);
+  const edToken = signEd25519ApprovalToken({
+    privateKeyPem: edPrivPem,
+    txDigest: bigDigest,
+    amount: 90000,
+    approver: 'cfo@cairo-pharma.eg',
+  });
+
+  const edPolicy = { approvalPublicKeyPem: edPubPem, maxAutonomousLimit: 50000, currentBalance: 250000, minReserve: 50000 };
+  const firstPass = await inspectMcpEnvelope(
+    {
+      jsonrpc: '2.0',
+      id: 950,
+      method: 'tools/call',
+      params: {
+        name: 'odoo_payout',
+        arguments: { sql: bigSql, amount: 90000, accountId: 'ed25519_test_acct', _apodictic_approval_token: edToken },
+      },
+    },
+    edPolicy
+  );
+  assert.equal(firstPass.result.allowed, true, 'Valid single-use Ed25519 token must allow');
+
+  const replayBlocked = await inspectMcpEnvelope(
+    {
+      jsonrpc: '2.0',
+      id: 951,
+      method: 'tools/call',
+      params: {
+        name: 'odoo_payout',
+        arguments: { sql: bigSql, amount: 90000, accountId: 'ed25519_test_acct_2', _apodictic_approval_token: edToken },
+      },
+    },
+    edPolicy
+  );
+  assert.equal(replayBlocked.error.code, -32001, 'Replayed jti token MUST be blocked');
+
+  const freshTokenForTamper = signEd25519ApprovalToken({
+    privateKeyPem: edPrivPem,
+    txDigest: bigDigest,
+    amount: 90000,
+    approver: 'cfo@cairo-pharma.eg',
+  });
+  const tamperedBlocked = await inspectMcpEnvelope(
+    {
+      jsonrpc: '2.0',
+      id: 952,
+      method: 'tools/call',
+      params: {
+        name: 'odoo_payout',
+        arguments: { sql: bigSql, amount: 95000, accountId: 'ed25519_test_acct_3', _apodictic_approval_token: freshTokenForTamper },
+      },
+    },
+    edPolicy
+  );
+  assert.equal(tamperedBlocked.error.code, -32001, 'Tampered amount breaking tx_digest MUST be blocked');
+
+  // 8. Odoo 20 `/json/2/` Reverse Proxy (`wrap-odoo`) in enforce and observe modes
+  let upstreamMutations = 0;
+  const mockOdoo = http.createServer(async (req, res) => {
+    if (req.url === '/doc-bearer/account.move.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ model: 'account.move', fields: ['line_ids', 'move_date', 'state'] }));
+      return;
+    }
+    for await (const _ of req) {
+      // drain
+    }
+    if (req.method === 'POST' && req.url?.startsWith('/json/2/')) {
+      upstreamMutations += 1;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, id: 101 }));
+  });
+  await new Promise((r) => mockOdoo.listen(0, '127.0.0.1', r));
+  const odooUrl = `http://127.0.0.1:${mockOdoo.address().port}`;
+
+  const enforceProxy = createOdooReverseProxyServer({
+    upstream: odooUrl,
+    mode: 'enforce',
+    maxDiscountPct: 15,
+    maxBranches: 1,
+    stateDbPath: path.join(STATE_DIR, 'odoo_enforce.db'),
+  });
+  await new Promise((r) => enforceProxy.listen(0, '127.0.0.1', r));
+  const enforceBase = `http://127.0.0.1:${enforceProxy.address().port}`;
+
+  const shadowLogPath = path.join(STATE_DIR, 'odoo_shadow.jsonl');
+  const observeProxy = createOdooReverseProxyServer({
+    upstream: odooUrl,
+    mode: 'observe',
+    maxDiscountPct: 15,
+    maxBranches: 1,
+    reportOut: shadowLogPath,
+    stateDbPath: path.join(STATE_DIR, 'odoo_observe.db'),
+  });
+  await new Promise((r) => observeProxy.listen(0, '127.0.0.1', r));
+  const observeBase = `http://127.0.0.1:${observeProxy.address().port}`;
+
+  try {
+    // 8a. Enforce: MCP advisory Readonly scope bypass blocked (403, 0 upstream)
+    const rMcp = await fetch(`${enforceBase}/json/2/account.move/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Odoo-Bearer-Scope': 'mcp' },
+      body: JSON.stringify({ vals_list: [{ line_ids: [[0, 0, { debit: 1000, credit: 0 }], [0, 0, { debit: 0, credit: 1000 }]] }] }),
+    });
+    assert.equal(rMcp.status, 403);
+    const jMcp = await rMcp.json();
+    assert.ok(jMcp.violations.includes('INV_ODOO20_MCP_READONLY_BYPASS'));
+
+    // 8b. Enforce: Unbalanced account.move blocked (403)
+    const rUnbal = await fetch(`${enforceBase}/json/2/account.move/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vals_list: [{ line_ids: [[0, 0, { debit: 4820, credit: 0 }], [0, 0, { debit: 0, credit: 4500 }]] }] }),
+    });
+    assert.equal(rUnbal.status, 403);
+    const jUnbal = await rUnbal.json();
+    assert.ok(jUnbal.violations.includes('INV_DOUBLE_ENTRY_BALANCE'));
+
+    // 8c. Enforce: 35% discount across 12 branches blocked (403)
+    const rPrice = await fetch(`${enforceBase}/json/2/product.pricelist.item/write`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        exposure: 35000,
+        vals_list: [
+          { percent_price: 35, branch_ids: ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9', 'b10', 'b11', 'b12'] },
+        ],
+      }),
+    });
+    assert.equal(rPrice.status, 403);
+    const jPrice = await rPrice.json();
+    assert.ok(jPrice.violations.includes('INV_PRICELIST_BLAST_RADIUS'));
+    assert.equal(upstreamMutations, 0, 'Enforce proxy leaked blocked request to upstream Odoo');
+
+    // 8d. Enforce: Valid balanced write reaches upstream (200)
+    const rValid = await fetch(`${enforceBase}/json/2/account.move/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vals_list: [{ line_ids: [[0, 0, { debit: 4500, credit: 0 }], [0, 0, { debit: 0, credit: 4500 }]] }] }),
+    });
+    assert.equal(rValid.status, 200);
+    assert.equal(upstreamMutations, 1);
+
+    // 8e. Observe: Unbalanced write forwards upstream (200) with X-Apodictic-Shadow-Verdict: WOULD_BLOCK
+    const rObs = await fetch(`${observeBase}/json/2/account.move/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vals_list: [{ line_ids: [[0, 0, { debit: 9900, credit: 0 }], [0, 0, { debit: 0, credit: 9100 }]] }] }),
+    });
+    assert.equal(rObs.status, 200);
+    assert.equal(rObs.headers.get('x-apodictic-shadow-verdict'), 'WOULD_BLOCK');
+    assert.equal(upstreamMutations, 2);
+
+    const rRep = await fetch(`${observeBase}/_apodictic/report`);
+    assert.equal(rRep.status, 200);
+    const repJson = await rRep.json();
+    assert.equal(repJson.violations_detected, 1);
+    assert.ok(repJson.exposure_usd >= 9900);
+    assert.ok(fs.existsSync(shadowLogPath) && fs.readFileSync(shadowLogPath, 'utf8').includes('WOULD_BLOCK'));
+  } finally {
+    await enforceProxy.closeAsync();
+    await observeProxy.closeAsync();
+    await new Promise((r) => mockOdoo.close(() => r()));
+  }
+
+  console.log('✓ @apodictic/mcp-verifier 8-tool spec handshake, schema validation, payload guard, wrap firewall, Ed25519 single-use tokens, wrap-odoo reverse proxy, policy DAG, RFC 6962, and Z3 tests passed');
 } finally {
   fs.rmSync(STATE_DIR, { recursive: true, force: true });
 }

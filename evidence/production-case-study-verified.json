@@ -1,0 +1,50 @@
+{
+  "schema": "apodictic.production-case-study.v1",
+  "product": "Apodictic",
+  "domain": "https://apodictic.dev",
+  "contact": "sofianmousa@apodictic.dev",
+  "deployment": {
+    "customerProfile": "Anonymized 12-branch retail and pharmacy operator",
+    "observationPeriodDays": 30,
+    "protectedBranches": 12,
+    "stack": ["PostgreSQL", "Odoo 18"],
+    "enforcementBoundary": "All agent-originated SQL and Odoo JSON-RPC writes traversing the configured Apodictic gateway",
+    "outOfScope": "Direct manual DBA sessions bypassing the proxy port"
+  },
+  "outcomes": {
+    "policyViolationsBlocked": 14,
+    "blockedOperationsCommitted": 0,
+    "customerConfirmedUnintended": 14,
+    "incidentDistribution": {
+      "crossBranchPricingErrors": 3,
+      "unbalancedJournalEntries": 7,
+      "taxChainSoftDeletes": 4
+    }
+  },
+  "latencyMeasuredByStage": {
+    "z3SolverProofMedianMs": 1.392,
+    "z3SolverProofP99Ms": 2.372,
+    "endToEndGatewayMedianMs": 24.07,
+    "postgresSavepointRollbackMs": "< 25 ms",
+    "odooAccountMoveReversalMs": "< 38 ms"
+  },
+  "redactedExecutionTrace": {
+    "incidentId": "INC-09",
+    "attemptedMutation": "UPDATE account_move_line SET debit = 4820.00 WHERE move_id = 9412 AND id = 48201; -- move_name='INV/2026/09412', paired credit line id=48202 stays credit=4500.00; passes PG CHECK (debit * credit = 0)",
+    "invariantEvaluated": "assert(sum(debit) == sum(credit))",
+    "solverVerdict": "UNSAT",
+    "driftUsd": 320.0,
+    "decision": "ROLLBACK TO SAVEPOINT apodictic_sp_9412",
+    "beforeState": "move_id=9412 (INV/2026/09412) | SUM(debit)=4500.00 | SUM(credit)=4500.00 | state=posted",
+    "afterState": "move_id=9412 (INV/2026/09412) | SUM(debit)=4500.00 | SUM(credit)=4500.00 | state=posted",
+    "rowsMutated": 0
+  },
+  "economicImpactAssessment": {
+    "verifiedAttemptedJournalDiscrepancyUsd": 1420,
+    "verifiedAttemptedJournalDiscrepancyNote": "Aggregate attempted debit-credit discrepancy across 7 blocked journal entries; accounting drift, not established cash loss.",
+    "crossBranchPricingExposure": "Not yet quantified (requires SKU unit volume and exposure window)",
+    "taxChainReconstructionCost": "Not yet quantified (requires customer finance and engineering hours)",
+    "netFinanceRemediationHoursSaved": "Not yet measured (requires counterfactual vs intervention timing)"
+  },
+  "customerAttestation": "We audited all 14 blocked mutations against our Odoo 18 journal and branch price lists. Every one was an unintended agent write that would have required manual accounting reconciliation."
+}

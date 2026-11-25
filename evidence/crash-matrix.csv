@@ -1,0 +1,5 @@
+kill_point,committed,rolled_back,audit_chain_valid,passed
+before_verification,false,true,true,true
+after_verification_before_commit,false,true,true,true
+during_tx_before_commit,false,true,true,true
+after_commit_before_response,true,false,true,true

@@ -1,0 +1,37 @@
+
+ RUN  v4.1.7 /Users/sofian/App/frontend
+
+(node:27005) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27004) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27006) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27003) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27007) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27010) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ __tests__/unit/agent-readiness.test.ts (5 tests) 18ms
+ ✓ __tests__/unit/production-upgrades.test.ts (9 tests) 574ms
+     ✓ POST /api/agent/compile-goal compiles multi-clause English to Policy IR, Cedar, Python AST, English back-translation & Z3 SAT witness in OBSERVE mode  467ms
+ ✓ __tests__/unit/worm-vault.test.ts (3 tests) 10ms
+ ✓ __tests__/unit/apodictic-verifier.test.ts (5 tests) 18ms
+ ✓ __tests__/unit/odoo20-and-agent-routes.test.ts (3 tests) 751ms
+     ✓ POST /api/v1/enclave and /api/apodictic/verify enforce debitTotal == creditTotal and Odoo 20 fiscal lock / inalterable hash / MCP scope rules via Z3  451ms
+ ✓ test-exports.test.ts (5 tests) 396ms
+     ✓ should attempt to download PDF without crashing  387ms
+ ✓ __tests__/serverless-wasm-enclave.test.ts (6 tests) 1588ms
+     ✓ ShadowPostgresVerifier (engine=wasm) proves SAT & synthesizes CEGIS patches in PGlite 17 + Z3 WASM  981ms
+ ✓ __tests__/unit/moats-api.test.ts (5 tests) 2226ms
+     ✓ POST /api/v1/shadow-prove enforces SPIFFE 401, catches trigger drain, attaches otel_genai_span & counterfactualPatch  1935ms
+ ✓ __tests__/unit/apodictic-api-routes.test.ts (6 tests) 2703ms
+     ✓ POST /api/apodictic/verify runs real Z3 5.4.1 verification and masks PII  494ms
+     ✓ GET /api/apodictic/gists serves all 10 verified bundles and POST executes all 10 runnable Z3 proofs  1898ms
+
+ Test Files  9 passed (9)
+      Tests  47 passed (47)
+   Start at  17:16:14
+   Duration  3.06s (transform 848ms, setup 0ms, import 1.68s, tests 8.28s, environment 2.42s)
+

@@ -1,0 +1,21 @@
+claim,implementation_file,verification_test
+Z3 5.4.1 financial & SQL-AST gate,apodictic_engine/src/proxy/interceptor.py,apodictic_engine/tests/benchmarks/run_100_case_benchmark.py
+10k unique adversarial confusion matrix,apodictic_engine/src/smt_theory/theory_kernel.py,apodictic_engine/tests/benchmarks/run_10k_benchmark.py
+Crash-durable 24h velocity & WORM audit,packages/apodictic-sdk/src/enclave_worker.py,packages/apodictic-sdk/test.mjs
+Zero-Python Z3 5.4.1 WebAssembly verifier,packages/apodictic-sdk/src/z3_wasm_verifier.mjs,packages/apodictic-sdk/test.mjs
+Odoo 18-20 JSON-2 & MCP Agentic ERP Firewall + wrap-odoo observe/enforce,packages/apodictic-mcp-verifier/bin/apodictic-mcp-verifier.mjs,docs/odoo20-mcp-advisory-readonly-poc.md
+ZATCA Phase 2 BR-CO-14 & Egypt ETA 281 Z3 proofs,apodictic_engine/src/smt_theory/global_indirect_tax_theorems.py,apodictic_engine/tests/test_odoo20_firewall_and_tax.py
+MCP stdio proxy & hosted Streamable HTTP /api/mcp (10 live tools),frontend/app/api/mcp/route.ts,frontend/__tests__/unit/production-upgrades.test.ts
+Multi-table BEGIN/COMMIT/ROLLBACK Rust pgwire proxy + --mode observe + --savepoint-mode,apodictic_infra/crates/apodictic-wire-proxy/src/lib.rs,evidence/rust-workspace-receipt.txt
+16-worker TCP Rust proxy + PostgreSQL 18.7 SAVEPOINT PL/pgSQL trigger concurrency,scripts/pg17-concurrency-benchmark.mjs,evidence/pg17-concurrency-receipt.json
+100-case Z3 Optimize counterfactual self-heal (100% 1-shot & 15/15 negative SQL clamp),scripts/agent-self-heal-benchmark.mjs,evidence/self-heal-benchmark.json
+1-Tap Ed25519 single-use CFO HITL approvals (Slack/WhatsApp),frontend/lib/apodictic/approvals.ts,frontend/__tests__/unit/production-upgrades.test.ts
+Grammar-constrained Policy IR + Cedar + Z3 deadlock check,frontend/lib/apodictic/policy-ir.ts,frontend/__tests__/unit/production-upgrades.test.ts
+4-point SIGKILL crash consistency,packages/apodictic-sdk/src/enclave_worker.py,evidence/crash-matrix.csv
+Z3 constraint mutation testing (4/4 killed),apodictic_engine/tests/benchmarks/run_mutation_suite.py,evidence/mutation-testing.json
+Dual-solver Z3 + OxiZ consensus & SQL parser,apodictic_infra/crates/apodictic-z3-engine/src/oxiz_verifier.rs,evidence/rust-workspace-receipt.txt
+Native Cedar 4.15 + OPA Regorus 0.15 + Google CEL,apodictic_infra/crates/apodictic-policy-engine/src/lib.rs,frontend/app/api/v1/opa/route.ts
+WASM PGlite shadow execution + Z3 proof,packages/apodictic-sdk/src/pglite_shadow.mjs,frontend/__tests__/unit/moats-api.test.ts
+NIST SP 800-38G AES-256-FF1 format-preserving FPE,apodictic_infra/crates/apodictic-zero-leak-sanitizer/src/lib.rs,evidence/rust-workspace-receipt.txt
+SPIFFE SVID identity & C2SP tlog-tiles export,frontend/lib/apodictic/crypto.ts,frontend/app/api/apodictic/worm-vault/route.ts
+Reproducible multi-suite execution & 47-test Vitest verification,frontend/public/evidence/reproduce.sh,evidence/vitest-verification-receipt.txt

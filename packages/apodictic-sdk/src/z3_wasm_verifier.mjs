@@ -22,6 +22,7 @@ try {
 
 let z3InstancePromise = null;
 let z3EmModule = null;
+let z3SharedContext = null;
 
 async function getZ3Wasm() {
   if (!z3InstancePromise) {
@@ -33,12 +34,21 @@ async function getZ3Wasm() {
   return z3InstancePromise;
 }
 
+async function getSharedZ3Context() {
+  const api = await getZ3Wasm();
+  if (!z3SharedContext) {
+    z3SharedContext = new api.Context('apodictic_wasm_shared');
+  }
+  return z3SharedContext;
+}
+
 export function terminateZ3WasmThreads() {
   try {
     z3EmModule?.PThread?.terminateAllThreads?.();
   } catch {
     // ignore cleanup errors
   }
+  z3SharedContext = null;
   z3InstancePromise = null;
   z3EmModule = null;
 }
@@ -450,30 +460,110 @@ export function rfc6962VerifyInclusion(leafHash, index, treeSize, pathNodes, exp
   }
 }
 
+function extractNegativeSqlLiteralJs(sql) {
+  const deobf = deobfuscateDynamicSql(stripSqlComments(sql));
+  const top = splitSqlStatements(deobf.replace(DOLLAR_BLOCK_RE, ' '));
+  const { extracted } = extractProceduralAndCteClauses(deobf);
+  const clauses = [...top, ...extracted];
+  let worstNeg = null;
+
+  for (const cl of clauses) {
+    const clean = cl.replace(/'(?:''|[^'])*'/g, " '' ");
+    for (const m of clean.matchAll(
+      /\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*(-\s*[0-9]+(?:\.[0-9]+)?)/gi
+    )) {
+      const val = -Math.abs(Number(m[1].replace(/\s+/g, '')));
+      if (Number.isFinite(val) && val < 0) {
+        worstNeg = worstNeg === null ? val : Math.min(worstNeg, val);
+      }
+    }
+    for (const m of clean.matchAll(
+      /\bINSERT\s+INTO\s+([A-Za-z0-9_."`]+)\s*(?:\(([^)]*)\))?\s*\bVALUES\s*\(([^)]+)\)/gi
+    )) {
+      const tbl = m[1].toLowerCase();
+      const colList = m[2]
+        ? m[2].split(',').map((c) => c.trim().replace(/["`]/g, '').toLowerCase())
+        : null;
+      const valList = m[3].split(',').map((v) => v.trim());
+
+      if (colList && colList.length === valList.length) {
+        let matchedNamed = false;
+        for (let idx = 0; idx < colList.length; idx++) {
+          if (AMT_COL_RE.test(colList[idx]) && /^-\s*[0-9]+(?:\.[0-9]+)?$/.test(valList[idx])) {
+            const val = -Math.abs(Number(valList[idx].replace(/\s+/g, '')));
+            if (Number.isFinite(val) && val < 0) {
+              worstNeg = worstNeg === null ? val : Math.min(worstNeg, val);
+              matchedNamed = true;
+            }
+          }
+        }
+        if (matchedNamed) continue;
+      }
+
+      if (/(?:transfer|payout|payment|wire|disburse|ledger|invoice|journal|move|refund|charge|account|vendor)/i.test(tbl)) {
+        for (const v of valList) {
+          if (/^-\s*[0-9]+(?:\.[0-9]+)?$/.test(v)) {
+            const val = -Math.abs(Number(v.replace(/\s+/g, '')));
+            if (Number.isFinite(val) && val < 0) {
+              worstNeg = worstNeg === null ? val : Math.min(worstNeg, val);
+            }
+          }
+        }
+      }
+    }
+  }
+  return worstNeg;
+}
+
 function patchSqlWithAmount(sql, maxSafe) {
   if (!sql || /^\s*(?:DROP|TRUNCATE|ALTER|COPY|CALL|CREATE)\b/i.test(sql)) return null;
-  const safeStr = Number.isInteger(maxSafe) ? String(maxSafe) : maxSafe.toFixed(2).replace(/\.?0+$/, '');
-  const mSub = sql.match(/(\b(?:balance|cash|reserve|available|funds)\s*=\s*[A-Za-z_.]+\s*-\s*)([0-9]+(?:\.[0-9]+)?)/i);
+  const clampedSafe = Math.max(0, Number(maxSafe || 0));
+  const safeStr = Number.isInteger(clampedSafe) ? String(clampedSafe) : clampedSafe.toFixed(2).replace(/\.?0+$/, '');
+  const mSub = sql.match(/(\b(?:balance|cash|reserve|available|funds|credit|equity)\s*=\s*[A-Za-z_.]+\s*-\s*)(-?\s*[0-9]+(?:\.[0-9]+)?)/i);
   if (mSub) return sql.replace(mSub[0], `${mSub[1]}${safeStr}`);
-  const mAmt = sql.match(/(\b(?:amount|amt|total|payout|disbursement)\s*=\s*)([0-9]+(?:\.[0-9]+)?)/i);
+  const mAmt = sql.match(/(\b(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*)(-?\s*[0-9]+(?:\.[0-9]+)?)/i);
   if (mAmt) return sql.replace(mAmt[0], `${mAmt[1]}${safeStr}`);
+  const insMatch = sql.match(/(\bVALUES\s*\()([^)]+)(\))/i);
+  if (insMatch) {
+    const inner = insMatch[2];
+    const base = insMatch.index + insMatch[1].length;
+    const candidates = [];
+    for (const numM of inner.matchAll(/(?<![A-Za-z0-9_.])(-?\s*[0-9]+(?:\.[0-9]+)?)/g)) {
+      const prefix = inner.slice(0, numM.index);
+      if ((prefix.match(/'/g) || []).length % 2 === 1) continue;
+      const numVal = Number(numM[1].replace(/\s+/g, ''));
+      if (Number.isFinite(numVal)) {
+        candidates.push({ val: numVal, start: base + numM.index, end: base + numM.index + numM[1].length });
+      }
+    }
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => Math.abs(b.val) - Math.abs(a.val));
+      const pick = candidates[0];
+      return sql.slice(0, pick.start) + safeStr + sql.slice(pick.end);
+    }
+  }
   return null;
 }
 
 async function synthesizeCounterfactualZ3Wasm({ initialBalance, minReserve, spendingLimit, cfoSigned, priorSpend = 0, totalSpend = 0, sql = '' }) {
-  const { Context } = await getZ3Wasm();
-  const ctx = new Context('cegis');
+  const ctx = await getSharedZ3Context();
   const opt = new ctx.Optimize();
   const zSafeCents = ctx.Int.const('max_safe_cents');
   const balCents = toCents(initialBalance);
   const minCents = toCents(minReserve);
   const capCents = toCents(spendingLimit);
   const priorCents = toCents(priorSpend);
+  const isNegativeRequest = Number(totalSpend) < 0;
 
   opt.add(zSafeCents.ge(0));
-  opt.add(ctx.Int.val(balCents).sub(zSafeCents).sub(priorCents).ge(minCents));
-  if (!cfoSigned) {
-    opt.add(zSafeCents.add(priorCents).le(capCents));
+  if (isNegativeRequest) {
+    // Reject negative-amount bypass attempts by proving safe amount is strictly 0 (never positive cap)
+    opt.add(zSafeCents.eq(0));
+  } else {
+    opt.add(ctx.Int.val(balCents).sub(zSafeCents).sub(priorCents).ge(minCents));
+    if (!cfoSigned) {
+      opt.add(zSafeCents.add(priorCents).le(capCents));
+    }
   }
   opt.maximize(zSafeCents);
   const chk = await opt.check();
@@ -487,8 +577,10 @@ async function synthesizeCounterfactualZ3Wasm({ initialBalance, minReserve, spen
     };
   }
   const solvedCents = Number(opt.model().eval(zSafeCents).toString());
-  const maxSafe = Number((solvedCents / 100).toFixed(2));
-  const reductionDelta = Number(Math.max(0, Number(totalSpend) - maxSafe).toFixed(2));
+  const maxSafe = isNegativeRequest ? 0 : Math.max(0, Number((solvedCents / 100).toFixed(2)));
+  const reductionDelta = isNegativeRequest
+    ? Number(Math.abs(Number(totalSpend)).toFixed(2))
+    : Number(Math.max(0, Number(totalSpend) - maxSafe).toFixed(2));
   return {
     solver: 'z3.Optimize',
     repair_feasible: true,
@@ -522,8 +614,7 @@ export async function runZ3WasmSmtProof({
   odooEval = null,
 }) {
   const t0 = performance.now();
-  const { Context } = await getZ3Wasm();
-  const { Solver, Int, Bool, Or, Not, And } = new Context('main');
+  const { Solver, Int, Bool, Or, Not, And } = await getSharedZ3Context();
   const solver = new Solver();
 
   const balCents = toCents(currentBalance);
@@ -786,11 +877,11 @@ export class Z3WasmEnclaveSession {
       : minRes;
 
     const extractedAmt = extractSqlAmountJs(rawSql, currBal);
+    const negSqlAmt = extractNegativeSqlLiteralJs(rawSql);
     const callerAmt = params.amount !== undefined && params.amount !== null ? Number(params.amount) : 0;
     if (!Number.isFinite(callerAmt) || callerAmt < 0) {
       throw new Error('Invalid negative or NaN amount');
     }
-    const amtVal = Math.max(callerAmt, extractedAmt);
 
     const odooEval = evaluateOdoo20Call({ ...params, cfoSigned });
     const astT0 = performance.now();
@@ -807,7 +898,8 @@ export class Z3WasmEnclaveSession {
       .prepare('SELECT COALESCE(SUM(amount), 0.0) AS s FROM velocity_events WHERE account_id = ? AND ts >= ?')
       .get(acct, cutoff);
     const priorSum = Number(priorSumRow?.s ?? 0);
-    const effectiveAmt = amtVal + priorSum;
+    const amtVal = negSqlAmt !== null && callerAmt === 0 ? negSqlAmt : Math.max(callerAmt, extractedAmt);
+    const effectiveAmt = amtVal < 0 ? amtVal : amtVal + priorSum;
 
     const z3Proof = await runZ3WasmSmtProof({
       currentBalance: currBal,
@@ -1027,8 +1119,7 @@ export class Z3WasmEnclaveSession {
 
   async verifyThreeWayMatch({ po, receipts = [], invoices = [], priceTolerancePct = 0.02 } = {}) {
     const t0 = performance.now();
-    const { Context } = await getZ3Wasm();
-    const { Solver, Int } = new Context('threeway');
+    const { Solver, Int } = await getSharedZ3Context();
     const solver = new Solver();
 
     const orderedQty = Math.round(Number(po?.orderedQty ?? 0) * 1000);
@@ -1064,8 +1155,7 @@ export class Z3WasmEnclaveSession {
 
   async verifyTaxCompliance({ jurisdiction = 'KSA_ZATCA', lines = [], claimedWhtAmount, hasCryptographicStamp = true, tolerance = 0.02 } = {}) {
     const t0 = performance.now();
-    const { Context } = await getZ3Wasm();
-    const { Solver, Int, Bool } = new Context('tax');
+    const { Solver, Int, Bool } = await getSharedZ3Context();
     const solver = new Solver();
 
     const rate = jurisdiction === 'EGYPT_ETA' ? 0.14 : jurisdiction === 'KSA_ZATCA' ? 0.15 : jurisdiction === 'EU_VAT_DE' ? 0.19 : 0.0;
@@ -1103,7 +1193,7 @@ export class Z3WasmEnclaveSession {
       const expWhtCents = Math.round(totalNetCents * Number(lines[0].whtRate));
       const zWhtE = Int.const('exp_wht');
       const zWhtC = Int.const('clm_wht');
-      solver.add(zWhtE.eq(expWhtC), zWhtC.eq(toCents(claimedWhtAmount)));
+      solver.add(zWhtE.eq(expWhtCents), zWhtC.eq(toCents(claimedWhtAmount)));
       solver.addAndTrack(zWhtC.sub(zWhtE).le(tolCents), 'INV_ETA_T4_WHT_PARITY');
     }
 
@@ -1160,8 +1250,7 @@ export class Z3WasmEnclaveSession {
       }
     }
 
-    const { Context } = await getZ3Wasm();
-    const { Solver, Int, Bool, Or, Not } = new Context('policy');
+    const { Solver, Int, Bool, Or, Not } = await getSharedZ3Context();
     const solver = new Solver();
     const zBal = Int.const('bal');
     const zMin = Int.const('minr');

@@ -1,0 +1,91 @@
+
+=== APODICTIC REPRODUCIBLE 3-SCENARIO TECHNICAL DEMO ===
+Engine: apodictic-mcp-verifier + Real WASM PostgreSQL 17 (@electric-sql/pglite) + Z3 5.4.1 (Python/WASM)
+
+[INITIAL POSTGRESQL 17 DATABASE STATE]
+{
+  "accounts": [
+    {
+      "id": "acc_treasury",
+      "balance": 250000,
+      "min_reserve": 50000
+    }
+  ],
+  "account_move_line": [
+    {
+      "id": 48201,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "121000",
+      "debit": 4500,
+      "credit": 0
+    },
+    {
+      "id": 48202,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "211000",
+      "debit": 0,
+      "credit": 4500
+    }
+  ],
+  "tax_chain": [
+    {
+      "record_id": "TAX-2026-001",
+      "sha256": "e3b0c44298fc1c149afb",
+      "active": true
+    }
+  ]
+}
+
+--- SCENARIO 1: Legitimate Financial Write ($12,500 disbursement) ---
+SQL:      UPDATE accounts SET balance = balance - 12500 WHERE id = 'acc_treasury';
+Verdict:  SAT · ALLOWED | Solver: Z3 5.4.1 (13.24 ms) | Reason: All invariants satisfied; committed to PostgreSQL
+
+--- SCENARIO 2: Unbalanced Odoo Journal Line Update (PostgreSQL CHECK bypassed -> Z3 UNSAT) ---
+SQL:      UPDATE account_move_line SET debit = 4820.00 WHERE move_id = 9412 AND id = 48201;
+Shadow:   PostgreSQL CHECK(debit*credit=0) allowed update -> observed SUM(debit)=$4820.00 != SUM(credit)=$4500.00 (rolled back)
+Verdict:  UNSAT · BLOCKED | Reason: INV_DOUBLE_ENTRY_BALANCE: sum(debit)=4820.00 != sum(credit)=4500.00 (drift=$320.00)
+
+--- SCENARIO 3: Attempted Protected Tax-Record Deletion ---
+SQL:      DELETE FROM tax_chain WHERE record_id = 'TAX-2026-001';
+Verdict:  UNSAT · BLOCKED | Reason: INV_REVERSIBILITY_GUARD
+
+[FINAL POSTGRESQL 17 DATABASE STATE (VERIFIED INTACT)]
+{
+  "accounts": [
+    {
+      "id": "acc_treasury",
+      "balance": 237500,
+      "min_reserve": 50000
+    }
+  ],
+  "account_move_line": [
+    {
+      "id": 48201,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "121000",
+      "debit": 4500,
+      "credit": 0
+    },
+    {
+      "id": 48202,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "211000",
+      "debit": 0,
+      "credit": 4500
+    }
+  ],
+  "tax_chain": [
+    {
+      "record_id": "TAX-2026-001",
+      "sha256": "e3b0c44298fc1c149afb",
+      "active": true
+    }
+  ]
+}
+
+Summary: 1 legitimate write committed | 2 invalid mutations blocked | 0 corrupted records.
+

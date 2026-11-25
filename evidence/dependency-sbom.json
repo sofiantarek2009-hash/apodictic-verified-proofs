@@ -1,0 +1,40 @@
+{
+  "bomFormat": "CycloneDX-light",
+  "generated_at": "2026-11-25T15:16:30.000Z",
+  "components": [
+    {
+      "name": "apodictic-sdk",
+      "version": "3.10.0",
+      "license": "MIT",
+      "dependencies": {
+        "@electric-sql/pglite": "^0.5.17",
+        "z3-solver": "^5.4.1"
+      }
+    },
+    {
+      "name": "apodictic-mcp-verifier",
+      "version": "3.10.0",
+      "license": "MIT",
+      "dependencies": {
+        "@electric-sql/pglite": "^0.5.17",
+        "apodictic-sdk": "^3.10.0",
+        "z3-solver": "^5.4.1"
+      }
+    },
+    {
+      "name": "@electric-sql/pglite",
+      "version": "0.5.17",
+      "ecosystem": "npm"
+    },
+    {
+      "name": "z3-solver",
+      "version": "5.4.1",
+      "ecosystem": "npm+pypi"
+    },
+    {
+      "name": "zod",
+      "version": "3.25.76",
+      "ecosystem": "npm"
+    }
+  ]
+}

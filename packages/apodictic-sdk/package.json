@@ -1,6 +1,6 @@
 {
   "name": "apodictic-sdk",
-  "version": "3.9.0",
+  "version": "3.10.0",
   "description": "Production TypeScript/Node SDK for Apodictic Pre-Commit Z3 Verification & Zero-PII Symbolic Gateway",
   "homepage": "https://apodictic.dev",
   "author": "Sofian Mousa <sofianmousa@apodictic.dev>",

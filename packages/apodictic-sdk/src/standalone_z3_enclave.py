@@ -1202,6 +1202,51 @@ def extract_sql_amount(sql: str, current_balance: float = 0.0) -> float:
     return max(ast_total, regex_total)
 
 
+def detect_negative_sql_literal(sql: Optional[str]) -> Optional[float]:
+    if not sql or not isinstance(sql, str):
+        return None
+    clean = deobfuscate_dynamic_sql(strip_comments(sql))
+    dollar_inner = " ; ".join(m.group(2) for m in DOLLAR_BLOCK_RE.finditer(clean))
+    exec_inner = " ; ".join(m.group(1).replace("''", "'") for m in EXECUTE_STRING_RE.finditer(clean))
+    without_dollars = DOLLAR_BLOCK_RE.sub(" ", clean)
+    scrubbed_main = STRING_LIT_RE.sub(" '' ", without_dollars)
+    scrubbed_dollar = STRING_LIT_RE.sub(" '' ", dollar_inner)
+    scrubbed = f"{scrubbed_main} ; {scrubbed_dollar} ; {exec_inner}"
+
+    amt_cols = {"amount", "amt", "total", "total_amount", "payment_amount", "payout", "disbursement", "transfer_amount", "debit", "wire_amount", "refund_amount"}
+    worst_neg: Optional[float] = None
+
+    for m in re.finditer(
+        r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*(-\s*[0-9]+(?:\.[0-9]+)?)",
+        scrubbed,
+        re.I,
+    ):
+        val = -abs(float(m.group(1).replace(" ", "")))
+        worst_neg = val if worst_neg is None else min(worst_neg, val)
+
+    for ins_m in re.finditer(
+        r"\bINSERT\s+INTO\s+([A-Za-z0-9_.\"`]+)(?:\s*\(([^)]*)\))?\s*\bVALUES\s*\(([^)]+)\)",
+        scrubbed,
+        re.I,
+    ):
+        tbl = ins_m.group(1).lower()
+        cols = [c.strip().strip('"`').lower() for c in ins_m.group(2).split(",")] if ins_m.group(2) else []
+        vals = [v.strip() for v in ins_m.group(3).split(",")]
+        matched_named = False
+        if cols and len(cols) == len(vals):
+            for cn, vn in zip(cols, vals):
+                if cn in amt_cols and re.match(r"^-\s*[0-9]+(?:\.[0-9]+)?$", vn):
+                    val = -abs(float(vn.replace(" ", "")))
+                    worst_neg = val if worst_neg is None else min(worst_neg, val)
+                    matched_named = True
+        if not matched_named and any(k in tbl for k in ("transfer", "payout", "payment", "wire", "disburse", "ledger", "invoice", "journal", "move", "refund", "charge", "account", "vendor")):
+            for vn in vals:
+                if re.match(r"^-\s*[0-9]+(?:\.[0-9]+)?$", vn):
+                    val = -abs(float(vn.replace(" ", "")))
+                    worst_neg = val if worst_neg is None else min(worst_neg, val)
+    return worst_neg
+
+
 def _format_safe_amount(val: float) -> str:
     rounded = round(max(0.0, float(val)), 2)
     if abs(rounded - round(rounded)) < 1e-9:
@@ -1217,29 +1262,34 @@ def synthesize_patched_sql(sql: Optional[str], max_safe_amount: float) -> Option
     safe_str = _format_safe_amount(max_safe_amount)
     candidates: List[Tuple[float, int, int]] = []
     for pat in (
-        r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:balance|cash|reserve|available|funds|credit|equity)\s*=\s*(?:[A-Za-z_][A-Za-z0-9_.]*\s*)?-\s*([0-9]+(?:\.[0-9]+)?)",
-        r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*([0-9]+(?:\.[0-9]+)?)",
+        r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:balance|cash|reserve|available|funds|credit|equity)\s*=\s*(?:[A-Za-z_][A-Za-z0-9_.]*\s*)?-\s*(-?\s*[0-9]+(?:\.[0-9]+)?)",
+        r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*(-?\s*[0-9]+(?:\.[0-9]+)?)",
     ):
         for m in re.finditer(pat, sql, re.I):
-            candidates.append((float(m.group(1)), m.start(1), m.end(1)))
+            candidates.append((float(m.group(1).replace(" ", "")), m.start(1), m.end(1)))
     if not candidates:
         for ins_m in re.finditer(r"\bVALUES\s*\(([^)]+)\)", sql, re.I):
             base = ins_m.start(1)
-            for num_m in re.finditer(r"(?<![A-Za-z0-9_.])([0-9]+(?:\.[0-9]+)?)", ins_m.group(1)):
+            for num_m in re.finditer(r"(?<![A-Za-z0-9_.])(-?\s*[0-9]+(?:\.[0-9]+)?)", ins_m.group(1)):
                 if ins_m.group(1)[: num_m.start(1)].count("'") % 2 == 1:
                     continue
-                candidates.append((float(num_m.group(1)), base + num_m.start(1), base + num_m.end(1)))
+                candidates.append((float(num_m.group(1).replace(" ", "")), base + num_m.start(1), base + num_m.end(1)))
     if not candidates:
-        for num_m in re.finditer(r"(?<![A-Za-z0-9_.])([0-9]+(?:\.[0-9]+)?)", sql):
+        for num_m in re.finditer(r"(?<![A-Za-z0-9_.])(-?\s*[0-9]+(?:\.[0-9]+)?)", sql):
             prefix = sql[: num_m.start(1)]
             if prefix.count("'") % 2 == 1:
                 continue
             if re.search(r"\b(?:id|account_id)\s*=\s*$", prefix, re.I):
                 continue
-            candidates.append((float(num_m.group(1)), num_m.start(1), num_m.end(1)))
+            candidates.append((float(num_m.group(1).replace(" ", "")), num_m.start(1), num_m.end(1)))
     if not candidates:
         return None
-    _, start, end = max(candidates, key=lambda item: item[0])
+    if max_safe_amount <= 0.0:
+        neg_cands = [item for item in candidates if item[0] < 0]
+        if neg_cands:
+            _, start, end = min(neg_cands, key=lambda item: item[0])
+            return sql[:start] + safe_str + sql[end:]
+    _, start, end = max(candidates, key=lambda item: abs(item[0]))
     return sql[:start] + safe_str + sql[end:]
 
 
@@ -1255,10 +1305,14 @@ def compute_counterfactual_patch(
     opt = z3.Optimize(ctx=opt_ctx)
     opt.set("timeout", 5000)
     safe_amt = z3.Real("safe_amt", ctx=opt_ctx)
+    is_neg = float(total_spend) < 0.0
     opt.add(safe_amt >= 0)
-    opt.add(z3.RealVal(str(initial_balance), ctx=opt_ctx) - safe_amt >= z3.RealVal(str(minimum_reserve), ctx=opt_ctx))
-    if not cfo_signed:
-        opt.add(safe_amt <= z3.RealVal(str(spending_limit), ctx=opt_ctx))
+    if is_neg:
+        opt.add(safe_amt == 0)
+    else:
+        opt.add(z3.RealVal(str(initial_balance), ctx=opt_ctx) - safe_amt >= z3.RealVal(str(minimum_reserve), ctx=opt_ctx))
+        if not cfo_signed:
+            opt.add(safe_amt <= z3.RealVal(str(spending_limit), ctx=opt_ctx))
     opt.maximize(safe_amt)
 
     max_safe_amount = 0.0
@@ -1271,8 +1325,8 @@ def compute_counterfactual_patch(
                 max_safe_amount = float(val.as_decimal(6).rstrip("?"))
         except Exception:
             max_safe_amount = 0.0
-    max_safe_amount = round(max(0.0, max_safe_amount), 2)
-    reduction_delta = round(max(0.0, float(total_spend) - max_safe_amount), 2)
+    max_safe_amount = 0.0 if is_neg else round(max(0.0, max_safe_amount), 2)
+    reduction_delta = round(abs(float(total_spend)), 2) if is_neg else round(max(0.0, float(total_spend) - max_safe_amount), 2)
     patched_sql = synthesize_patched_sql(sql, max_safe_amount)
     return {
         "max_safe_amount": max_safe_amount,
@@ -1548,13 +1602,26 @@ class StandaloneEnclaveSession:
             vat_rate = float(params.get("statutoryVat", 0.14))
             exp_vat = float(params.get("expectedVat", 0.14))
             extracted_amt = extract_sql_amount(raw_sql, current_balance=curr_bal)
+            neg_sql_amt = detect_negative_sql_literal(raw_sql)
             amt_raw = params.get("amount")
             caller_amt = float(amt_raw) if amt_raw is not None else 0.0
             if caller_amt < 0 or caller_amt != caller_amt or math.isinf(caller_amt):
                 raise ValueError("Invalid negative, NaN, or infinite amount")
-            amt_val = max(caller_amt, extracted_amt)
-            if amt_val < 0 or amt_val != amt_val:
-                raise ValueError("Invalid negative or NaN amount")
+
+            prior_sum = float(
+                self.conn.execute(
+                    "SELECT COALESCE(SUM(amount), 0.0) FROM velocity_events WHERE account_id = ? AND ts >= ?",
+                    (acct, time.time() - 86400.0),
+                ).fetchone()[0]
+            )
+            if neg_sql_amt is not None and caller_amt == 0.0:
+                amt_val = neg_sql_amt
+                effective_amt = neg_sql_amt
+            else:
+                amt_val = max(caller_amt, extracted_amt)
+                if amt_val < 0 or amt_val != amt_val:
+                    raise ValueError("Invalid negative or NaN amount")
+                effective_amt = amt_val + prior_sum
 
             sanitized_sql, redactions, dlp_checksums = scrub_text_detailed(raw_sql)
             dlp_ms = (time.perf_counter() - t0) * 1000.0
@@ -1566,15 +1633,6 @@ class StandaloneEnclaveSession:
             has_multi = bool(ast["multi_statement"])
             is_destructive = has_multi or ast["is_unbounded"] or ast["statement_type"] in ("DELETE", "DROP", "TRUNCATE", "ALTER")
             rev_armed = False if has_multi else (not is_destructive)
-
-            cutoff = time.time() - 86400.0
-            prior_sum = float(
-                self.conn.execute(
-                    "SELECT COALESCE(SUM(amount), 0.0) FROM velocity_events WHERE account_id = ? AND ts >= ?",
-                    (acct, cutoff),
-                ).fetchone()[0]
-            )
-            effective_amt = amt_val + prior_sum
 
             z0 = time.perf_counter()
             ctx = z3.Context()

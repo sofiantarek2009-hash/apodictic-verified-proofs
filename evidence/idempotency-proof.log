@@ -1,0 +1,6 @@
+=== APODICTIC EFFECTIVELY-ONCE IDEMPOTENCY PROOF ===
+Timestamp: 2026-11-17T17:26:21.326Z
+1. Initial $40,000 tx (idem_40k_001): COMMITTED
+2. Retry same key + same amount: DEDUPLICATED_ALREADY_COMMITTED
+3. Reuse same key + different amount ($50,000): REJECTED_KEY_REUSE_DIFF_AMOUNT
+4. Final DB balance: $60000 (changed exactly once: $100,000 -> $60,000)

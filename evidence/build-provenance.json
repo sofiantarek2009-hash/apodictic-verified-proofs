@@ -1,0 +1,24 @@
+{
+  "generated_at": "2026-11-25T15:16:30.000Z",
+  "base_git_commit": "558c2057e466530b5407a9f0c7c1aa2ddcfc53cc",
+  "packages": {
+    "apodictic-sdk": "3.10.0",
+    "apodictic-mcp-verifier": "3.10.0"
+  },
+  "public_proof_gists": {
+    "gist_11_v3_10_0_proof_pack": "https://gist.github.com/sofiantarek2009-hash/592c0ebdb0255ba88172f5ecbfbf4bc3"
+  },
+  "artifacts_sha256": {
+    "packages/apodictic-sdk/src/enclave_worker.py": "85e1830bdcc1dc6bda139ec2c0ab155ff0c13be3cca6bd300943524191dea545",
+    "packages/apodictic-sdk/src/standalone_z3_enclave.py": "0c609a6adc53b059d502b4c0629f7fbe9633663ae845de138643a60231a5c398",
+    "packages/apodictic-sdk/src/z3_wasm_verifier.mjs": "c2e004a3b5764b92410e951c0b0f42992793a4a88708135dcefde5b78996222e",
+    "packages/apodictic-sdk/src/odoo20_guard.mjs": "6243e2454b670dd197f2d715476ddafc9743b926a269f94581f31aa9dbb146f1",
+    "packages/apodictic-sdk/src/pglite_shadow.mjs": "d5715913c711f652b8f3ce38eeb448d8c0d1eb36bcab3a6f42dd749732b93fd6",
+    "packages/apodictic-sdk/src/index.mjs": "7cef6910235a181fe52849af45dbe5698672d792ef102d3643c593ee64c44857",
+    "packages/apodictic-mcp-verifier/bin/apodictic-mcp-verifier.mjs": "5550ada30621ae8cda271074bb3e1c5d5732091e49bc3be9565f7612fd8ac265",
+    "frontend/app/api/mcp/route.ts": "ba29fc62bc8c2f1731d20521d7d18cf8316cc03f35ff3ad5a334f5c79ae3daa3",
+    "frontend/lib/apodictic/approvals.ts": "962e292e92126720c1a64a33a0e32ca7ff2a0e3006c10ed6460425c23b6f5590",
+    "frontend/lib/apodictic/policy-ir.ts": "d3519850504ba8d060abfe684520ae34359f40dd01a7d8e830bc709a49f6da79",
+    "apodictic_infra/crates/apodictic-wire-proxy/src/lib.rs": "49a46e0d4de9095450e07d0c4e2240d203df1291e2022b4e4d0c24b8ca72105a"
+  }
+}

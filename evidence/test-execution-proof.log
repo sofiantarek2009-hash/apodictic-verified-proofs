@@ -1,0 +1,400 @@
+
+=== APODICTIC REPRODUCIBLE 3-SCENARIO TECHNICAL DEMO ===
+Engine: apodictic-mcp-verifier + Real WASM PostgreSQL 17 (@electric-sql/pglite) + Z3 5.4.1 (Python/WASM)
+
+[INITIAL POSTGRESQL 17 DATABASE STATE]
+{
+  "accounts": [
+    {
+      "id": "acc_treasury",
+      "balance": 250000,
+      "min_reserve": 50000
+    }
+  ],
+  "account_move_line": [
+    {
+      "id": 48201,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "121000",
+      "debit": 4500,
+      "credit": 0
+    },
+    {
+      "id": 48202,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "211000",
+      "debit": 0,
+      "credit": 4500
+    }
+  ],
+  "tax_chain": [
+    {
+      "record_id": "TAX-2026-001",
+      "sha256": "e3b0c44298fc1c149afb",
+      "active": true
+    }
+  ]
+}
+
+--- SCENARIO 1: Legitimate Financial Write ($12,500 disbursement) ---
+SQL:      UPDATE accounts SET balance = balance - 12500 WHERE id = 'acc_treasury';
+Verdict:  SAT · ALLOWED | Solver: Z3 5.4.1 (13.24 ms) | Reason: All invariants satisfied; committed to PostgreSQL
+
+--- SCENARIO 2: Unbalanced Odoo Journal Line Update (PostgreSQL CHECK bypassed -> Z3 UNSAT) ---
+SQL:      UPDATE account_move_line SET debit = 4820.00 WHERE move_id = 9412 AND id = 48201;
+Shadow:   PostgreSQL CHECK(debit*credit=0) allowed update -> observed SUM(debit)=$4820.00 != SUM(credit)=$4500.00 (rolled back)
+Verdict:  UNSAT · BLOCKED | Reason: INV_DOUBLE_ENTRY_BALANCE: sum(debit)=4820.00 != sum(credit)=4500.00 (drift=$320.00)
+
+--- SCENARIO 3: Attempted Protected Tax-Record Deletion ---
+SQL:      DELETE FROM tax_chain WHERE record_id = 'TAX-2026-001';
+Verdict:  UNSAT · BLOCKED | Reason: INV_REVERSIBILITY_GUARD
+
+[FINAL POSTGRESQL 17 DATABASE STATE (VERIFIED INTACT)]
+{
+  "accounts": [
+    {
+      "id": "acc_treasury",
+      "balance": 237500,
+      "min_reserve": 50000
+    }
+  ],
+  "account_move_line": [
+    {
+      "id": 48201,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "121000",
+      "debit": 4500,
+      "credit": 0
+    },
+    {
+      "id": 48202,
+      "move_id": 9412,
+      "move_name": "INV/2026/09412",
+      "account_code": "211000",
+      "debit": 0,
+      "credit": 4500
+    }
+  ],
+  "tax_chain": [
+    {
+      "record_id": "TAX-2026-001",
+      "sha256": "e3b0c44298fc1c149afb",
+      "active": true
+    }
+  ]
+}
+
+Summary: 1 legitimate write committed | 2 invalid mutations blocked | 0 corrupted records.
+
+
+ RUN  v4.1.7 /Users/sofian/App/frontend
+
+ ✓ __tests__/unit/worm-vault.test.ts (3 tests) 8ms
+ ✓ __tests__/unit/apodictic-verifier.test.ts (5 tests) 13ms
+ ✓ __tests__/unit/odoo20-and-agent-routes.test.ts (3 tests) 207ms
+ ✓ test-exports.test.ts (5 tests) 227ms
+ ✓ __tests__/unit/moats-api.test.ts (5 tests) 1876ms
+     ✓ POST /api/v1/shadow-prove enforces SPIFFE 401, catches trigger drain, attaches otel_genai_span & counterfactualPatch  1552ms
+     ✓ POST /api/v1/opa enforces SPIFFE 401 and evaluates Rego + CEL policies via release Rust binary (including invalid syntax fail-closed)  307ms
+ ✓ __tests__/unit/apodictic-api-routes.test.ts (6 tests) 2297ms
+     ✓ GET /api/apodictic/gists serves all 10 verified bundles and POST executes all 10 runnable Z3 proofs  1858ms
+
+ Test Files  6 passed (6)
+      Tests  27 passed (27)
+   Start at  16:39:55
+   Duration  2.58s (transform 452ms, setup 0ms, import 611ms, tests 4.63s, environment 1.01s)
+
+   Compiling apodictic-cli-admin v0.1.0 (/Users/sofian/App/apodictic_infra/crates/apodictic-cli-admin)
+    Finished `test` profile [unoptimized] target(s) in 2.43s
+     Running unittests src/lib.rs (target/debug/build/apodictic-cdc-engine/eb67508f2de34098/out/apodictic_cdc_engine-eb67508f2de34098)
+
+running 17 tests
+test logical_decoding::tests::test_empty_buffer_returns_incomplete_message ... ok
+test logical_decoding::tests::test_parse_begin_message_and_truncation ... ok
+test logical_decoding::tests::test_invalid_tags_and_malformed_tuple_types ... ok
+test logical_decoding::tests::test_parse_commit_message_and_truncation ... ok
+test logical_decoding::tests::test_binary_tuple_tag_and_valid_relation ... ok
+test logical_decoding::tests::test_parse_delete_with_key_and_full_old_tuple ... ok
+test logical_decoding::tests::test_parse_insert_message_columns ... ok
+test logical_decoding::tests::test_parse_type_truncate_origin_and_logical_message_tags ... ok
+test logical_decoding::tests::test_parse_update_with_key_and_without_old_tuple ... ok
+test logical_decoding::tests::test_relation_multiple_and_zero_columns ... ok
+test lsn::tests::test_lsn_display_and_from_str_roundtrip ... ok
+test logical_decoding::tests::test_truncated_packets_never_panic ... ok
+test lsn::tests::test_lsn_from_str_invalid_formats_return_error ... ok
+test lsn::tests::test_lsn_parts_and_advance ... ok
+test stream::tests::test_cdc_session_invokes_multiple_handlers ... ok
+test stream::tests::test_cdc_session_processes_begin_and_commit_and_advances_lsn ... ok
+test stream::tests::test_cdc_session_rejects_truncated_chunk_without_advancing_lsn ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-cli-admin/1b890a613cc26bef/out/apodictic_cli_admin-1b890a613cc26bef)
+
+running 10 tests
+test config::tests::test_admin_config_default_values ... ok
+test config::tests::test_output_format_variants_serde ... ok
+test config::tests::test_admin_config_json_roundtrip ... ok
+test commands::tests::test_cli_args_unknown_subcommand_fails ... ok
+test commands::tests::test_cli_args_cluster_status_and_endpoint ... ok
+test commands::tests::test_cli_args_all_subcommands_parse_with_defaults ... ok
+test commands::tests::test_collect_kernel_diagnostics_verifies_vault_and_merkle ... ok
+test commands::tests::test_handle_cluster_status_reports_healthy_node ... ok
+test commands::tests::test_format_table_contains_diagnostic_summary ... ok
+test commands::tests::test_cluster_status_and_diagnostics_serde_roundtrip ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running unittests src/bin/apodictic_pg_proxy.rs (target/debug/build/apodictic-cli-admin/a38bd13d181ba5d5/out/apodictic_pg_proxy-a38bd13d181ba5d5)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/apodictic_rust_kernel.rs (target/debug/build/apodictic-cli-admin/e8ebbfbf465cc0f5/out/apodictic_rust_kernel-e8ebbfbf465cc0f5)
+
+running 6 tests
+test tests::test_infer_rego_query_rule_comments_and_explicit_override ... ok
+test tests::test_execute_kernel_request_pgoutput_hex_valid_and_truncated ... ok
+test tests::test_opa_route_invalid_rego_and_cel_fail_closed ... ok
+test tests::test_opa_route_rego_and_cel_schema_compat ... ok
+test tests::test_execute_kernel_request_cedar_eval ... ok
+test tests::test_execute_kernel_request_fpe_and_oxiz_dual_solver ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-merkle-trie/99485065eb7ccd07/out/apodictic_merkle_trie-99485065eb7ccd07)
+
+running 14 tests
+test tests::test_empty_tree_root_and_verify_inclusion_false ... ok
+test tests::test_out_of_bounds_leaf_index_fails_verification ... ok
+test tests::test_length_prefixed_leaf_hash_prevents_delimiter_collision ... ok
+test tests::test_rfc6962_domain_separation_leaf_vs_node ... ok
+test tests::test_merkle_trie_inclusion_and_exclusion ... ok
+test tests::test_single_leaf_tree_root_and_empty_audit_path ... ok
+test tests::test_tamper_audit_path_sibling_fails_verification ... ok
+test tests::test_tamper_root_hash_fails_verification ... ok
+test tests::test_wrong_leaf_index_fails_verification ... ok
+test tests::test_exclusion_witness_sorted_neighbors_all_boundaries_and_tamper_rejected ... ok
+test tests::test_tamper_leaf_hash_fails_verification ... ok
+test tests::test_trie_overwrite_updates_root_and_invalidates_old_leaf ... ok
+test tests::test_truncated_or_extended_audit_path_fails_verification ... ok
+test tests::test_rfc6962_inclusion_proofs_all_sizes_1_to_16 ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-policy-engine/d7abf8cfa9f0db91/out/apodictic_policy_engine-d7abf8cfa9f0db91)
+
+running 17 tests
+test tests::test_cedar_malformed_policy_fails_closed ... ok
+test tests::test_cel_malformed_expression_rejected ... ok
+test tests::test_cel_invalid_vars_json_and_non_object_rejected ... ok
+test tests::test_cel_runtime_execution_error_fails_closed ... ok
+test tests::test_cedar_empty_policy_set_implicit_deny ... ok
+test tests::test_cedar_malformed_entities_and_context_fail_closed ... ok
+test tests::test_cel_arithmetic_and_boolean_guards ... ok
+test tests::test_rego_malformed_policy_data_input_empty_rule_rejected ... ok
+test tests::test_rego_invalid_query_syntax_fails_closed ... ok
+test tests::test_rego_allow_and_deny ... ok
+test tests::test_rego_query_expression_fallback ... ok
+test tests::test_cedar_forbid_overrides_universal_permit ... ok
+test tests::test_rego_query_fallback_requires_non_empty_true_expressions ... ok
+test tests::test_rego_undefined_and_non_bool_fail_closed ... ok
+test tests::test_cedar_malformed_uids_fail_closed ... ok
+test tests::test_cel_string_and_list_membership_guards ... ok
+test tests::test_cedar_transitive_group_allow_and_forbid_override ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-sovereign-audit-vault/e32afae08481c76d/out/apodictic_sovereign_audit_vault-e32afae08481c76d)
+
+running 15 tests
+test tests::test_empty_payload_rejected_invalid_framing ... ok
+test tests::test_genesis_block_and_empty_vault_verifies ... ok
+test tests::test_genesis_tampering_and_monotonic_sequence_timestamp_enforced ... ok
+test tests::test_tamper_payload_bytes_only_detected ... ok
+test tests::test_metadata_hash_order_independence_and_retention_saturating ... ok
+test tests::test_tamper_detection ... ok
+test tests::test_retention_lock_enforcement_and_hmac_seal ... ok
+test tests::test_multi_entry_hash_chain_and_monotonic_sequence ... ok
+test tests::test_tamper_sequence_num_detected ... ok
+test tests::test_tamper_previous_hash_detected ... ok
+test tests::test_reordering_blocks_detected_by_chain_verification ... ok
+test tests::test_tamper_entry_hash_detected ... ok
+test tests::test_vault_append_and_cryptographic_verification ... ok
+test tests::test_tamper_timestamp_and_legal_hold_detected ... ok
+test tests::test_wal_file_persistence_reload_and_tamper_detection ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-symbolic-sql/f7b9af107707d803/out/apodictic_symbolic_sql-f7b9af107707d803)
+
+running 29 tests
+test tests::test_deobfuscate_non_u8_chr_escaped_quotes_hex_base64_convert_from_and_e_strings ... ok
+test tests::test_emit_transfer_hoare_smt2_contains_double_entry_store ... ok
+test tests::test_create_function_procedural_ddl_unbounded ... ok
+test tests::test_comments_stripped_without_corrupting_string_literals ... ok
+test tests::test_conjunction_with_specific_predicate_is_not_tautology ... ok
+test tests::test_constant_arithmetic_folding_and_balance_zero ... ok
+test tests::test_constant_folding_in_update_and_financial_insert ... ok
+test tests::test_compile_sql_to_smt2_stacked_and_cfo_flags ... ok
+test tests::test_ddl_statements_always_unbounded ... ok
+test tests::test_insert_select_and_arbitrary_table_amount_summing ... ok
+test tests::test_eval_const_expr_all_operators_and_div_by_zero ... ok
+test tests::test_smt_array_store_select ... ok
+test tests::test_set_balance_negative_flagged_zeroing ... ok
+test tests::test_merge_and_copy_statements ... ok
+test tests::test_malformed_sql_fails_closed ... ok
+test tests::test_mutation_kind_ordering_and_predicate_extraction ... ok
+test tests::test_expanded_tautology_detection ... ok
+test tests::test_multi_statement_and_semicolon_in_string_literal ... ok
+test tests::test_subquery_with_exists_preserves_outer_update ... ok
+test tests::test_subquery_derived_from_preserves_outer_update ... ok
+test tests::test_subquery_preservation_does_not_erase_outer_update ... ok
+test tests::test_subquery_in_delete_preserves_outer_delete_kind ... ok
+test tests::test_rust_sql_ast_bounded_update_and_cte_and_obfuscated_do_block ... ok
+test tests::test_tautology_where_nested_or_with_folded_arithmetic ... ok
+test tests::test_on_conflict_do_update_and_non_constant_balance_exprs_blocked ... ok
+test tests::test_where_tautologies_flagged_unbounded ... ok
+test tests::test_tautology_where_boolean_and_numeric_comparisons ... ok
+test tests::test_set_balance_zero_across_alias_columns_and_folded_zero ... ok
+test tests::test_unhandled_statements_fail_closed_whitelist_query_only ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-wire-proxy/2064369f588c9b4c/out/apodictic_wire_proxy-2064369f588c9b4c)
+
+running 18 tests
+test tests::test_extract_query_execute_and_close_packet_helpers ... ok
+test tests::test_decode_pg_binary_numeric_special_and_negative_values ... ok
+test tests::test_parse_oids_and_binary_float_numeric_decoding ... ok
+test tests::test_bind_binary_int2_int4_int8_null_and_text_decoding ... ok
+test tests::test_pgwire_error_frame_encoding ... ok
+test tests::test_startup_length_under_8_returns_err_and_copy_done_tag_is_c ... ok
+test tests::test_substitute_params_quote_safe_and_injection_resistant ... ok
+test tests::test_wire_codec_roundtrip_and_bind_substitution ... ok
+test tests::test_wire_codec_startup_ssl_request_and_malformed_frame ... ok
+test tests::test_deterministic_fallback_without_libz3 ... ok
+test tests::test_malformed_sql_blocked_by_wire_proxy ... ok
+test tests::test_copy_sql_statements_blocked_fail_closed ... ok
+test tests::test_atomic_balance_tracking_concurrent_threads_never_breach_floor ... ok
+test tests::test_cfo_approved_allows_over_spend_cap_within_floor ... ok
+test tests::test_cumulative_split_drain_atomic_balance_blocking ... ok
+test tests::test_simple_query_allow_and_block_verdicts ... ok
+test tests::test_unknown_bind_blocked_pipelined_sync_and_upstream_error_refunds_balance ... ok
+test tests::test_real_bidirectional_tcp_proxy_ssl_and_extended_query ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-z3-engine/d91e76b36ff6c14d/out/apodictic_z3_engine-d91e76b36ff6c14d)
+
+running 23 tests
+test ast::tests::test_smt_sort_display_all_variants ... ok
+test ast::tests::test_smt_expr_arithmetic_and_array_sexpr ... ok
+test ast::tests::test_smt_expr_boolean_and_comparison_sexpr ... ok
+test ast::tests::test_smt_expr_negative_int_and_real_sexpr ... ok
+test ffi::tests::test_libz3_c_ffi_interior_nul_byte_fails_closed ... ok
+test ast::tests::test_smt_expr_negative_constant_solves_in_oxiz ... ok
+test oxiz_verifier::tests::test_malformed_oxiz_and_missing_z3_fail_closed ... ok
+test ffi::tests::test_libz3_c_ffi_malformed_smt2_fails_closed ... ok
+test ffi::tests::test_libz3_boundary_values_zero_and_negative_integers ... ok
+test oxiz_verifier::tests::test_dual_solver_divergence_fails_closed ... ok
+test oxiz_verifier::tests::test_destructive_op_without_reversal_unsat_both_solvers ... ok
+test ffi::tests::test_libz3_c_ffi_in_process_sat_and_unsat ... ok
+test ffi::tests::test_libz3_double_entry_array_conservation_sat_and_unsat ... ok
+test oxiz_verifier::tests::test_double_entry_conservation_dual_solver_sat_and_imbalance_unsat ... ok
+test theories::financial::tests::test_double_entry_conservation_balanced_and_imbalanced_unsat ... ok
+test oxiz_verifier::tests::test_solvency_floor_boundary_exact_vs_one_below ... ok
+test oxiz_verifier::tests::test_dual_solver_consensus_sat_and_unsat ... ok
+test theories::financial::tests::test_solvency_floor_theory_sat_and_unsat_via_z3 ... ok
+test theories::financial::tests::test_spend_cap_theory_with_and_without_cfo_signature ... ok
+test theories::financial::tests::test_statutory_vat_parity_within_and_outside_tolerance ... ok
+test oxiz_verifier::tests::test_verify_transaction_evaluates_extra_double_entry_and_vat_in_oxiz ... ok
+test oxiz_verifier::tests::test_spend_cap_boundary_exact_vs_exceeded_and_cfo_override ... ok
+test solver::tests::test_native_z3_subprocess_sat_and_unsat ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running unittests src/lib.rs (target/debug/build/apodictic-zero-leak-sanitizer/f827e3dccbee6fa0/out/apodictic_zero_leak_sanitizer-f827e3dccbee6fa0)
+
+running 20 tests
+test tests::test_iban_mod97_valid_across_countries ... ok
+test tests::test_iban_mod97_invalid_cases ... ok
+test tests::test_luhn_pan_invalid_cases_including_mixed_letters ... ok
+test tests::test_luhn_pan_valid_formats_and_lengths ... ok
+test tests::test_gitleaks_secret_prefixes_and_tax_ids_auto_sanitized ... ok
+test tests::test_ff1_iban_roundtrip_multiple_countries_and_separators ... ok
+test tests::test_ff1_iban_invalid_inputs_rejected ... ok
+test tests::test_ff1_pan_tweak_sensitivity_and_invalid_inputs ... ok
+test tests::test_non_matching_text_untouched_by_auto_sanitize ... ok
+test tests::test_email_redaction_and_invalid_iban_non_redaction ... ok
+test tests::test_auto_sanitize_fpe_detokenize_roundtrip ... ok
+test tests::test_non_matching_text_untouched_by_fpe_auto_sanitize ... ok
+test tests::test_nist_sp_800_38g_aes256_ff1_pan_and_iban_roundtrip ... ok
+test tests::test_ff1_pan_roundtrip_13_to_19_digits_preserves_format_and_length ... ok
+test tests::test_zeroize_on_drop_trait_bound ... ok
+test tests::test_simd_aho_corasick_and_luhn_auto_scanner ... ok
+test tests::test_zero_leak_sanitization_and_detokenization ... ok
+test tests::test_detokenize_unknown_and_key_isolation ... ok
+test tests::test_sanitize_entity_idempotence ... ok
+test tests::test_spaced_iban_pan_amex_pem_db_url_ssn_and_trailing_punct ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_cdc_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_cli_admin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_merkle_trie
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_policy_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_sovereign_audit_vault
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_symbolic_sql
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_wire_proxy
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_z3_engine
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests apodictic_zero_leak_sanitizer
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

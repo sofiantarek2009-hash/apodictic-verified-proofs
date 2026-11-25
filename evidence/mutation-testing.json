@@ -1,0 +1,28 @@
+{
+  "total": 4,
+  "killed": 4,
+  "score": "100%",
+  "generated_at": "2026-11-19T17:46:36Z",
+  "mutants": [
+    {
+      "id": "MUT-01",
+      "name": "disable_min_reserve",
+      "status": "KILLED"
+    },
+    {
+      "id": "MUT-02",
+      "name": "disable_cfo_cap",
+      "status": "KILLED"
+    },
+    {
+      "id": "MUT-03",
+      "name": "disable_spending_limit",
+      "status": "KILLED"
+    },
+    {
+      "id": "MUT-04",
+      "name": "disable_vat_check",
+      "status": "KILLED"
+    }
+  ]
+}

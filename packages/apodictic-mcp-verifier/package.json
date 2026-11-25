@@ -1,7 +1,7 @@
 {
   "name": "apodictic-mcp-verifier",
-  "version": "3.9.0",
-  "description": "Pre-commit MCP JSON-RPC tools/call firewall & SYM_* privacy interceptor",
+  "version": "3.10.0",
+  "description": "Pre-commit MCP JSON-RPC tools/call, Odoo 20 JSON-2 observe/enforce proxy & SYM_* privacy interceptor",
   "homepage": "https://apodictic.dev",
   "author": "Sofian Mousa <sofianmousa@apodictic.dev>",
   "type": "module",
@@ -13,7 +13,7 @@
     "README.md"
   ],
   "dependencies": {
-    "apodictic-sdk": "^3.9.0"
+    "apodictic-sdk": "^3.10.0"
   },
   "scripts": {
     "test": "node ./test.mjs"

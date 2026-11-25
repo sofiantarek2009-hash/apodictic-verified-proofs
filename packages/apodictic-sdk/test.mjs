@@ -511,11 +511,35 @@ try {
     assert.equal(fbRes.verified, false);
     assert.equal(fbRes.engine, 'z3-5.4.1-wasm-smt');
     await wasmAutoFallbackGw.close();
+
+    // 23a. Negative SQL literal attack in Zero-Python WASM mode clamps counterfactual to 0 (NEVER spendingLimit)
+    const wasmNegSqlRes = await wasmGw.verifySql('UPDATE payouts SET amount = -5000 WHERE id = 1;', {
+      accountId: 'neg_sql_wasm_1',
+      currentBalance: 250000,
+      minReserve: 50000,
+      maxAutonomousLimit: 50000,
+    });
+    assert.equal(wasmNegSqlRes.verified, false);
+    assert.match(String(wasmNegSqlRes.reason), /INV_NON_NEGATIVE/);
+    assert.equal(wasmNegSqlRes.counterfactualPatch?.max_safe_amount, 0);
+    assert.match(String(wasmNegSqlRes.counterfactualPatch?.patched_sql), /amount\s*=\s*0\b/);
   } finally {
     await wasmGw.close();
   }
 
-  console.log(`✓ Crash/restart durability, rollback persistence, 20x concurrency, ZATCA, Zero-PII HTTP gateway, Policy DAG, 2-phase escrow, RFC 6962, Mod-97/Luhn, Rust daemon, PGlite shadow firewall, z3.Optimize, adversarial SQL bypasses, Odoo 20 firewall, and Zero-Python Z3 WASM tests passed`);
+  // 23b. Negative SQL literal attack in Python Enclave mode clamps counterfactual to 0 (NEVER spendingLimit)
+  const pyNegSqlRes = await gw2.verifySql('UPDATE payouts SET amount = -5000 WHERE id = 1;', {
+    accountId: 'neg_sql_py_1',
+    currentBalance: 250000,
+    minReserve: 50000,
+    maxAutonomousLimit: 50000,
+  });
+  assert.equal(pyNegSqlRes.verified, false);
+  assert.match(String(pyNegSqlRes.reason), /INV_NON_NEGATIVE/);
+  assert.equal(pyNegSqlRes.counterfactualPatch?.max_safe_amount, 0);
+  assert.match(String(pyNegSqlRes.counterfactualPatch?.patched_sql), /amount\s*=\s*0\b/);
+
+  console.log(`✓ Crash/restart durability, rollback persistence, 20x concurrency, ZATCA, Zero-PII HTTP gateway, Policy DAG, 2-phase escrow, RFC 6962, Mod-97/Luhn, Rust daemon, PGlite shadow firewall, z3.Optimize, adversarial SQL bypasses, Odoo 20 firewall, Zero-Python Z3 WASM, and negative SQL counterfactual clamp tests passed`);
 } finally {
   await gw2.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });

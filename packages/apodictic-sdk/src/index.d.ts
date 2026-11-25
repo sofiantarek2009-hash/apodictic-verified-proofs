@@ -38,11 +38,14 @@ export interface VerifyMutationInput {
   minReserve?: number;
   maxAutonomousLimit?: number;
   cfoSigned?: boolean;
+  approvalToken?: string;
   statutoryVat?: number;
   expectedVat?: number;
   targetSystem?: 'postgresql' | 'odoo_v18' | 'odoo_v19' | 'odoo_v20' | 'sap_s4hana' | 'stripe';
   odoo?: Record<string, unknown>;
 }
+
+export { terminateZ3WasmThreads } from './z3_wasm_verifier.mjs';
 
 export interface VerifyMutationResult {
   verdict: 'SAT' | 'UNSAT';

@@ -1,0 +1,45 @@
+{
+  "total": 10000,
+  "true_positives": 7500,
+  "true_negatives": 2500,
+  "false_positives": 0,
+  "false_negatives": 0,
+  "by_category": {
+    "financial_invariant": {
+      "tp": 2000,
+      "tn": 0,
+      "fp": 0,
+      "fn": 0
+    },
+    "destructive_mutation": {
+      "tp": 2000,
+      "tn": 0,
+      "fp": 0,
+      "fn": 0
+    },
+    "privilege_bypass": {
+      "tp": 1500,
+      "tn": 0,
+      "fp": 0,
+      "fn": 0
+    },
+    "pii_leakage": {
+      "tp": 1000,
+      "tn": 0,
+      "fp": 0,
+      "fn": 0
+    },
+    "tax_parity_drift": {
+      "tp": 1000,
+      "tn": 0,
+      "fp": 0,
+      "fn": 0
+    },
+    "valid_ledger_write": {
+      "tp": 0,
+      "tn": 2500,
+      "fp": 0,
+      "fn": 0
+    }
+  }
+}
