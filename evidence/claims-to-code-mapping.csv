@@ -19,3 +19,4 @@ WASM PGlite shadow execution + Z3 proof,packages/apodictic-sdk/src/pglite_shadow
 NIST SP 800-38G AES-256-FF1 format-preserving FPE,apodictic_infra/crates/apodictic-zero-leak-sanitizer/src/lib.rs,evidence/rust-workspace-receipt.txt
 SPIFFE SVID identity & C2SP tlog-tiles export,frontend/lib/apodictic/crypto.ts,frontend/app/api/apodictic/worm-vault/route.ts
 Reproducible multi-suite execution & 47-test Vitest verification,frontend/public/evidence/reproduce.sh,evidence/vitest-verification-receipt.txt
+40/40 multi-engine adversarial SQL red-team & 64-worker native PostgreSQL 17 CI proof,scripts/adversarial-redteam-audit.mjs,evidence/adversarial-redteam-receipt.json

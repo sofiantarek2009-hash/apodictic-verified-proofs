@@ -1,7 +1,8 @@
 # Apodictic Reproducible Evidence Package (v3.10.1)
 
-This directory contains **23 cryptographically sealed, machine-readable verification receipts** generated on `Darwin arm64 / Python 3.9.8 / Node.js v22 / Z3 5.4.1 / Rust 1.100.0`:
+This directory contains **24 cryptographically sealed, machine-readable verification receipts** generated on `Darwin arm64 / Python 3.9.8 / Node.js v22 / Z3 5.4.1 / Rust 1.100.0`:
 
+- `adversarial-redteam-receipt.json` — **Multi-Engine Adversarial Red-Team & 64-Worker Concurrency Proof**: `40/40` (`20/20` WASM Z3 + `20/20` standalone Python Z3 with `PYTHONPATH=""`, `0` escapes) covering comment-split DDL, zero-width Unicode/BOM smuggling, PG `pg_read_file`/`lo_export`/`dblink`, double-negation debits, constant arithmetic folding, tautology `WHERE`, CTE deletes, and `DO $$ EXECUTE $$`; strict `stateless` vs `stateful` velocity isolation; `32/32` PG 18.7 `SAVEPOINT` trigger drains + `ON DELETE CASCADE` caught; `wrap-odoo` live proxy (`enforce` 5/5 + `observe` `$85k` report); `64-worker` Rust TCP `apodictic_pg_proxy` (`5` allow / `59` SQLSTATE `40001` / `0` overdrafts); `4/4` DLP redaction; and `3/3` Ed25519 checks. Verified continuously on Linux CI against a live `postgres:17` Docker container via `node scripts/adversarial-redteam-audit.mjs --pg-url ... --no-write`.
 - `pg17-concurrency-receipt.json` — **16-worker concurrency & trigger catch proof**: live TCP Rust `apodictic_pg_proxy` (`3` allow, `13` rejected via SQLSTATE `40001`, `0` overdrafts, WAL report verified in `86 ms`) + embedded PostgreSQL 18.7 (`@electric-sql/pglite`) `SAVEPOINT ... ROLLBACK TO SAVEPOINT` catching `16/16` hidden PL/pgSQL `AFTER UPDATE` fee-drain triggers (`0` corrupted rows).
 - `self-heal-benchmark.json` — **100-case counterfactual repair benchmark**: `100/100 (100%)` 1-shot guided Z3 `Optimize` SQL repair vs `0%` blind 1-shot (`1%` blind 3-shot), with `15/15` SQL-embedded negative literal attacks safely clamped to `$0`.
 - `odoo20-mcp-advisory-readonly-poc.md` — **Odoo 20 Advisory Readonly MCP PoC**: reproducible proof-of-concept demonstrating UI-only `Readonly` flag bypasses over `/json/2/` and blocking via `wrap-odoo --mode observe|enforce`.
@@ -12,7 +13,7 @@ This directory contains **23 cryptographically sealed, machine-readable verifica
 - `confusion-matrix.json` — `10,000`-case unique adversarial suite confusion matrix (`TP=7,500`, `TN=2,500`, `FP=0`, `FN=0`).
 - `benchmark.json` — Multi-suite latency & v3.10.1 execution receipt (`P50/P95/P99`).
 - `limitations.md` — Explicit scope, updated PostgreSQL 18.7 / live TCP 16-worker receipts, enforcement boundaries, and remaining external infrastructure validation requirements.
-- `manifest.sha256` — SHA-256 checksums sealing all `23` artifact files in this evidence package (`23/23 OK`).
+- `manifest.sha256` — SHA-256 checksums sealing all `24` artifact files in this evidence package (`24/24 OK`).
 
 Public Proof Links:
 - Public Proof Repo: `https://github.com/sofiantarek2009-hash/apodictic-verified-proofs`

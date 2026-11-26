@@ -4,7 +4,7 @@
 set -euo pipefail
 [ -d "$HOME/.cargo/bin" ] && export PATH="$HOME/.cargo/bin:$PATH"
 
-echo "=== 1. Verifying 23-Artifact SHA-256 Evidence Manifest ==="
+echo "=== 1. Verifying 24-Artifact SHA-256 Evidence Manifest ==="
 (cd frontend/public/evidence && shasum -a 256 -c manifest.sha256)
 
 echo ""
@@ -20,10 +20,11 @@ echo "=== 4. Running 9-Crate Rust Workspace Tests (176 tests) ==="
 (cd apodictic_infra && cargo test --workspace)
 
 echo ""
-echo "=== 5. Running 100-Case Counterfactual Self-Heal & 16-Worker PG Concurrency Benchmarks ==="
-node scripts/agent-self-heal-benchmark.mjs
+echo "=== 5. Running 100-Case Counterfactual Self-Heal, 16-Worker PG Concurrency & Red-Team Suites ==="
+node scripts/agent-self-heal-benchmark.mjs --no-write 2>/dev/null || node scripts/agent-self-heal-benchmark.mjs
 [ -x apodictic_infra/target/release/apodictic_pg_proxy ] || (cd apodictic_infra && cargo build --release --bin apodictic_pg_proxy)
 node scripts/pg17-concurrency-benchmark.mjs
+node scripts/adversarial-redteam-audit.mjs --no-write
 
 echo ""
-echo "ALL APODICTIC PROOFS, BENCHMARKS, AND 23/23 CHECKSUMS VERIFIED."
+echo "ALL APODICTIC PROOFS, BENCHMARKS, AND 24/24 CHECKSUMS VERIFIED."

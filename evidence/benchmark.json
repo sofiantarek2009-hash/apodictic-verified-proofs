@@ -69,6 +69,17 @@
     },
     "mcp_verifier_zero_python_wasm_ed25519_wrap_odoo": {
       "exit_code": 0
+    },
+    "adversarial_redteam_and_64w_stress": {
+      "exit_code": 0,
+      "wasm_z3_passed": 20,
+      "python_standalone_passed": 20,
+      "pglite_trigger_catches": 32,
+      "on_delete_cascade_caught": true,
+      "rust_wire_proxy_64w_allowed": 5,
+      "rust_wire_proxy_64w_blocked": 59,
+      "rust_wire_proxy_64w_overdrafts": 0,
+      "receipt": "adversarial-redteam-receipt.json"
     }
   },
   "proxy_benchmark_250_iters_raw": "======================================================================\nAPODICTIC PRODUCTION PROXY BENCHMARK (250 CONTINUOUS ITERATIONS)\n======================================================================\n\n[DETAILED LATENCY PERCENTILES - REAL TIME]\n1. Total End-to-End Proxy Gate: P50=2.404ms | P95=3.359ms | P99=3.591ms\n\n\u2713 ALL PRODUCTION LATENCY CRITERIA SATISFIED WITH 100% RELIABILITY.",

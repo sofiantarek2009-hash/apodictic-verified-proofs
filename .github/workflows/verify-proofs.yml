@@ -19,7 +19,7 @@ jobs:
             echo "=== Running $f ==="
             python3 "$f"
           done
-      - name: Verify 23-artifact SHA-256 evidence manifest
+      - name: Verify 24-artifact SHA-256 evidence manifest
         run: (cd evidence && sha256sum -c manifest.sha256)
       - name: Install and run apodictic-sdk & apodictic-mcp-verifier test suites (including Zero-Python Z3 WASM)
         run: |
@@ -27,3 +27,36 @@ jobs:
           (cd packages/apodictic-sdk && npm install --no-audit --no-fund && npm test && npm pack --dry-run)
           (cd packages/apodictic-mcp-verifier && npm install --no-audit --no-fund && npm test && APODICTIC_DISABLE_PYTHON=1 node ./bin/apodictic-mcp-verifier.mjs demo && npm pack --dry-run)
           node scripts/agent-self-heal-benchmark.mjs
+
+  verify-live-postgres17-and-redteam:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: apodictic_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -r requirements.txt sqlglot
+      - name: Install SDK, MCP verifier, and native pg driver
+        run: |
+          set -e
+          (cd packages/apodictic-sdk && npm install --no-audit --no-fund && npm install --no-save pg)
+          (cd packages/apodictic-mcp-verifier && npm install --no-audit --no-fund)
+      - name: Run 40/40 Multi-Engine Adversarial Red-Team & 64-Worker Live PostgreSQL 17 Stress Suite
+        run: node scripts/adversarial-redteam-audit.mjs --pg-url postgresql://postgres:postgres@127.0.0.1:5432/apodictic_ci --no-write

@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-11-26T17:49:40.951Z",
+  "benchmark": "Apodictic Adversarial Red-Team & Native PostgreSQL 17 Concurrency Proof",
+  "status": "PASS",
+  "suite_a_multi_engine_20x_redteam": {
+    "status": "PASS",
+    "total_checks": 40,
+    "wasm_z3_passed": 20,
+    "wasm_escapes": 0,
+    "wasm_duration_ms": 288.81,
+    "python_standalone_passed": 20,
+    "python_standalone_escapes": 0,
+    "python_duration_ms": 412.25,
+    "stateless_velocity_isolation": {
+      "wasm_3x_30k_stateless_allowed": true,
+      "wasm_2x_30k_stateful_blocked_second": true,
+      "python_3x_30k_stateless_allowed": true,
+      "python_2x_30k_stateful_blocked_second": true
+    },
+    "categories_covered": [
+      "comment_split_ddl",
+      "zero_width_unicode_smuggling",
+      "bom_delete",
+      "stacked_sql_injection",
+      "pg_read_file_and_lo_export_and_dblink_exfil",
+      "double_negation_and_paren_negation",
+      "constant_arithmetic_cap_bypass",
+      "direct_negative_literal",
+      "reserve_floor_and_double_entry_drift",
+      "tautology_where_1_eq_1",
+      "cte_destructive_delete",
+      "plpgsql_chr_execute_obfuscation"
+    ]
+  },
+  "suite_b_postgres_triggers_cascade_and_64w_pool": {
+    "status": "PASS",
+    "pglite_wasm": {
+      "engine": "PostgreSQL 18.7 (@electric-sql/pglite)",
+      "trigger_savepoint_catches": 32,
+      "trigger_corrupted_rows": 0,
+      "trigger_final_balance": 60000,
+      "on_delete_cascade_caught": true
+    },
+    "live_postgresql_17": {
+      "status": "skipped_no_pg_url"
+    }
+  },
+  "suite_c_odoo20_wrap_proxy_cli": {
+    "status": "PASS",
+    "enforce_checks_passed": 5,
+    "observe_would_block_exposure_usd": 85000,
+    "upstream_leaks_on_blocked": 0
+  },
+  "suite_d_rust_wire_proxy_64w_contention": {
+    "status": "PASS",
+    "workers": 64,
+    "initial_balance": 60000,
+    "min_reserve": 25000,
+    "debit_per_worker": 7000,
+    "allowed": 5,
+    "blocked": 59,
+    "sqlstate_40001": 59,
+    "overdrafts": 0,
+    "final_balance": 25000,
+    "wal_chain_valid": true,
+    "wall_time_ms": 300.13
+  },
+  "suite_e_dlp_and_ed25519_hitl": {
+    "status": "PASS",
+    "dlp_entities_redacted": 4,
+    "raw_pii_leaks": 0,
+    "bijective_rehydrate_exact": true,
+    "ed25519_checks_passed": 3
+  }
+}
