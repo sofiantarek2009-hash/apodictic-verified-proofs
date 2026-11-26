@@ -42,6 +42,10 @@ except Exception:
 ZERO_WIDTH_RE = re.compile(r"[\u200B-\u200D\uFEFF\u00AD]")
 SQL_COMMENT_RE = re.compile(r"--[^\n]*|/\*[\s\S]*?\*/")
 STRING_LIT_RE = re.compile(r"'(?:''|[^'])*'")
+DANGEROUS_PG_FUNC_RE = re.compile(
+    r"\b(?:pg_read_file|pg_read_binary_file|pg_ls_dir|pg_stat_file|lo_import|lo_export|lo_get|lo_put|dblink|dblink_exec|dblink_connect|pg_execute_server_program)\s*\(",
+    re.I,
+)
 
 _IBAN_ALPHA_MAP: Dict[int, str] = {
     ord(ch): str(idx) for idx, ch in enumerate(string.digits + string.ascii_uppercase)
@@ -681,7 +685,8 @@ def strip_zero_width(text: str) -> str:
 
 
 def strip_sql_comments(sql: str) -> str:
-    # Replace comments with space while respecting quoted strings cleanly
+    # Strip zero-width evasion characters and replace SQL comments with space while respecting strings
+    sql = strip_zero_width(sql)
     parts: List[str] = []
     i = 0
     n = len(sql)
@@ -901,8 +906,9 @@ def _sg_is_tautology_expr(expr: Any) -> bool:
 
 
 def analyze_sql_ast(sql: str) -> Dict[str, Any]:
-    deobf = deobfuscate_dynamic_sql(sql)
-    inner_clauses, is_proc_ddl = extract_procedural_and_cte_clauses(deobf)
+    clean_input = strip_zero_width(sql)
+    deobf = deobfuscate_dynamic_sql(strip_sql_comments(clean_input))
+    inner_clauses, is_proc_ddl = extract_procedural_and_cte_clauses(deobfuscate_dynamic_sql(clean_input))
     top_level_sql = DOLLAR_BLOCK_RE.sub(" ", deobf)
     stmts = split_sql_statements(top_level_sql)
     has_multi = len(stmts) > 1
@@ -929,6 +935,15 @@ def analyze_sql_ast(sql: str) -> Dict[str, Any]:
     any_unbounded = has_multi
     unparsed_clauses: List[str] = []
 
+    for candidate_text in [deobf, *all_clauses]:
+        scrubbed_fn_check = STRING_LIT_RE.sub(" '' ", candidate_text)
+        if DANGEROUS_PG_FUNC_RE.search(scrubbed_fn_check):
+            highest_op = "ALTER"
+            any_unbounded = True
+            mutating_count += 1
+            all_mutating_have_where = False
+            break
+
     if HAS_SQLGLOT:
         for clause in all_clauses:
             try:
@@ -943,6 +958,7 @@ def analyze_sql_ast(sql: str) -> Dict[str, Any]:
                     tname = (tbl.name or "").lower()
                     if tname and tname not in tables:
                         tables.append(tname)
+                matched_tree_op = False
                 for subnode in tree.walk():
                     op: Optional[str] = None
                     if isinstance(subnode, sg_exp.Drop):
@@ -965,8 +981,11 @@ def analyze_sql_ast(sql: str) -> Dict[str, Any]:
                             op = cmd_name
                         elif cmd_name == "COPY":
                             op = "INSERT"
+                        else:
+                            op = "ALTER"
                     if op is None:
                         continue
+                    matched_tree_op = True
                     if SEVERITY_ORDER.get(op, 0) > SEVERITY_ORDER.get(highest_op, 0):
                         highest_op = op
                     if op in ("UPDATE", "DELETE"):
@@ -979,6 +998,11 @@ def analyze_sql_ast(sql: str) -> Dict[str, Any]:
                         mutating_count += 1
                         all_mutating_have_where = False
                         any_unbounded = True
+                if not matched_tree_op:
+                    # Unrecognized parse root (e.g. sqlglot Alias('DR AS OP') from DR/**/OP TABLE ...)
+                    tx_types = tuple(t for t in (getattr(sg_exp, "Transaction", None), getattr(sg_exp, "Commit", None), getattr(sg_exp, "Rollback", None)) if t is not None)
+                    if not (tx_types and isinstance(tree, tx_types)):
+                        unparsed_clauses.append(clause)
     else:
         unparsed_clauses = list(all_clauses)
 
@@ -986,7 +1010,9 @@ def analyze_sql_ast(sql: str) -> Dict[str, Any]:
         upper = st.upper().strip()
         m_head = re.match(r"^([A-Z_]+)", upper)
         first_kw = m_head.group(1) if m_head else "UNKNOWN"
-        if first_kw in ("SELECT", "EXPLAIN", "SHOW"):
+        if first_kw in ("SELECT", "EXPLAIN", "SHOW", "BEGIN", "START", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE"):
+            op = "QUERY"
+        elif first_kw in ("POST", "TOOL_CALL"):
             op = "QUERY"
         elif first_kw == "WITH":
             op = "UPDATE" if re.search(r"\b(?:DELETE|DROP|TRUNCATE|ALTER|UPDATE|INSERT|COPY)\b", upper) else "QUERY"
@@ -1205,7 +1231,7 @@ def extract_sql_amount(sql: str, current_balance: float = 0.0) -> float:
 def detect_negative_sql_literal(sql: Optional[str]) -> Optional[float]:
     if not sql or not isinstance(sql, str):
         return None
-    clean = deobfuscate_dynamic_sql(strip_comments(sql))
+    clean = deobfuscate_dynamic_sql(strip_sql_comments(strip_zero_width(sql)))
     dollar_inner = " ; ".join(m.group(2) for m in DOLLAR_BLOCK_RE.finditer(clean))
     exec_inner = " ; ".join(m.group(1).replace("''", "'") for m in EXECUTE_STRING_RE.finditer(clean))
     without_dollars = DOLLAR_BLOCK_RE.sub(" ", clean)
@@ -1215,6 +1241,22 @@ def detect_negative_sql_literal(sql: Optional[str]) -> Optional[float]:
 
     amt_cols = {"amount", "amt", "total", "total_amount", "payment_amount", "payout", "disbursement", "transfer_amount", "debit", "wire_amount", "refund_amount"}
     worst_neg: Optional[float] = None
+
+    for dbl_m in re.finditer(
+        r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:balance|cash|reserve|available|funds|credit|equity)\s*=\s*(?:[A-Za-z_][A-Za-z0-9_.]*)\s*-\s*\(?\s*(-\s*[0-9]+(?:\.[0-9]+)?)\s*\)?",
+        scrubbed,
+        re.I,
+    ):
+        val = -abs(float(dbl_m.group(1).replace(" ", "")))
+        worst_neg = val if worst_neg is None else min(worst_neg, val)
+
+    for dbl_amt in re.finditer(
+        r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*-\s*-\s*([0-9]+(?:\.[0-9]+)?)",
+        scrubbed,
+        re.I,
+    ):
+        val = -abs(float(dbl_amt.group(1)))
+        worst_neg = val if worst_neg is None else min(worst_neg, val)
 
     for m in re.finditer(
         r"\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*(-\s*[0-9]+(?:\.[0-9]+)?)",
@@ -1380,7 +1422,10 @@ class StandaloneEnclaveSession:
         self.state_db_path = state_db_path or os.environ.get("APODICTIC_STATE_DB") or os.path.join(
             os.path.expanduser("~"), ".apodictic", "enclave_state.db"
         )
-        os.makedirs(os.path.dirname(self.state_db_path), exist_ok=True)
+        if self.state_db_path != ":memory:":
+            db_dir = os.path.dirname(self.state_db_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
         self.conn = sqlite3.connect(self.state_db_path, check_same_thread=False, timeout=5.0)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL;")
@@ -1594,7 +1639,8 @@ class StandaloneEnclaveSession:
                 "SELECT balance, min_reserve FROM ledger_accounts WHERE account_id = ?",
                 (acct,),
             ).fetchone()
-            use_persisted_bal = existing_acct_row is not None and not has_explicit_bal and not bool(params.get("stateless", False))
+            is_stateless = bool(params.get("stateless", False))
+            use_persisted_bal = existing_acct_row is not None and not has_explicit_bal and not is_stateless
             curr_bal = float(existing_acct_row["balance"]) if use_persisted_bal else float(params.get("currentBalance", 250000.0))
             min_res = float(existing_acct_row["min_reserve"]) if use_persisted_bal else float(params.get("minReserve", 50000.0))
             spend_cap = float(params.get("maxAutonomousLimit", 50000.0))
@@ -1608,13 +1654,17 @@ class StandaloneEnclaveSession:
             if caller_amt < 0 or caller_amt != caller_amt or math.isinf(caller_amt):
                 raise ValueError("Invalid negative, NaN, or infinite amount")
 
-            prior_sum = float(
-                self.conn.execute(
-                    "SELECT COALESCE(SUM(amount), 0.0) FROM velocity_events WHERE account_id = ? AND ts >= ?",
-                    (acct, time.time() - 86400.0),
-                ).fetchone()[0]
+            prior_sum = (
+                0.0
+                if is_stateless
+                else float(
+                    self.conn.execute(
+                        "SELECT COALESCE(SUM(amount), 0.0) FROM velocity_events WHERE account_id = ? AND ts >= ?",
+                        (acct, time.time() - 86400.0),
+                    ).fetchone()[0]
+                )
             )
-            if neg_sql_amt is not None and caller_amt == 0.0:
+            if neg_sql_amt is not None:
                 amt_val = neg_sql_amt
                 effective_amt = neg_sql_amt
             else:
@@ -1714,7 +1764,7 @@ class StandaloneEnclaveSession:
             proof_id = f"prf_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
             digest = hashlib.sha256(f"{proof_id}:{verdict}:{curr_bal}:{effective_amt}:{sanitized_sql}".encode()).hexdigest()
 
-            if verified and amt_val > 0:
+            if not is_stateless and verified and amt_val > 0:
                 self.conn.execute(
                     "INSERT INTO velocity_events (account_id, amount, ts) VALUES (?, ?, ?)",
                     (acct, amt_val, time.time()),

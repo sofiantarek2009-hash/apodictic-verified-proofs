@@ -207,7 +207,8 @@ class MonorepoEnclaveSession:
                 "SELECT balance, min_reserve FROM ledger_accounts WHERE account_id = ?",
                 (acct,),
             ).fetchone()
-            use_persisted_bal = existing_acct_row is not None and not has_explicit_bal and not bool(params.get("stateless", False))
+            is_stateless = bool(params.get("stateless", False))
+            use_persisted_bal = existing_acct_row is not None and not has_explicit_bal and not is_stateless
             curr_bal = float(existing_acct_row["balance"]) if use_persisted_bal else float(params.get("currentBalance", 250000.0))
             min_res = float(existing_acct_row["min_reserve"]) if use_persisted_bal else float(params.get("minReserve", 50000.0))
             amt = params.get("amount")
@@ -263,12 +264,13 @@ class MonorepoEnclaveSession:
                                 curr_bal = float(pg_row[0])
                                 min_res = float(pg_row[1]) if pg_row[1] is not None else min_res
                                 locked_pg_row = True
-                        cur.execute(
-                            "SELECT COALESCE(SUM(amount), 0) FROM apodictic_velocity_events WHERE account_id = %s AND ts >= %s",
-                            (acct, cutoff),
-                        )
-                        shared_sum = float(cur.fetchone()[0])
-                    self.proxy._account_velocity[acct] = [shared_sum] if shared_sum > 0 else []
+                        if not is_stateless:
+                            cur.execute(
+                                "SELECT COALESCE(SUM(amount), 0) FROM apodictic_velocity_events WHERE account_id = %s AND ts >= %s",
+                                (acct, cutoff),
+                            )
+                            shared_sum = float(cur.fetchone()[0])
+                            self.proxy._account_velocity[acct] = [shared_sum] if shared_sum > 0 else []
 
                 res = self.proxy.intercept_and_execute(
                     raw_statement=str(params.get("sql", "")),
@@ -280,6 +282,7 @@ class MonorepoEnclaveSession:
                     statutory_vat=float(params.get("statutoryVat", 0.14)),
                     expected_vat=float(params.get("expectedVat", 0.14)),
                     amount=amt_val,
+                    stateless=is_stateless,
                 )
                 if de_unsat_reason is not None:
                     res["verified"] = False
@@ -297,7 +300,7 @@ class MonorepoEnclaveSession:
                         res["timings"]["z3_solve_ms"] = round(float(res["timings"].get("z3_solve_ms", 0.0)) + de_z3_ms, 3)
 
                 eff_amt = amt_val if amt_val is not None else float(res.get("extracted_amount") or res.get("amount") or 0.0)
-                if res["verified"] and eff_amt > 0:
+                if not is_stateless and res["verified"] and eff_amt > 0:
                     now_ts = time.time()
                     self.state_conn.execute(
                         "INSERT INTO velocity_events (account_id, amount, ts) VALUES (?, ?, ?)",

@@ -10,6 +10,7 @@ import {
   computeApprovalTxDigest,
   createOdooReverseProxyServer,
   inspectMcpEnvelope,
+  parseCliArgs,
   scanApodicticMcpToolGuard,
   signEd25519ApprovalToken,
 } from './bin/apodictic-mcp-verifier.mjs';
@@ -460,6 +461,28 @@ rl.on('line', (l) => {
     assert.equal(repJson.violations_detected, 1);
     assert.ok(repJson.exposure_usd >= 9900);
     assert.ok(fs.existsSync(shadowLogPath) && fs.readFileSync(shadowLogPath, 'utf8').includes('WOULD_BLOCK'));
+
+    // 8f. Enforce: account.payment/create with vals_list amount exceeding cap ($85,000 > $50,000) & negative amount blocked (403)
+    const rOverPay = await fetch(`${enforceBase}/json/2/account.payment/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vals_list: [{ amount: 85000, partner_id: 9 }] }),
+    });
+    assert.equal(rOverPay.status, 403, 'wrap-odoo allowed over-cap vals_list account.payment/create');
+    const jOverPay = await rOverPay.json();
+    assert.equal(jOverPay.blocked, true);
+
+    const rNegPay = await fetch(`${enforceBase}/json/2/account.payment/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vals_list: [{ amount: -5000, partner_id: 9 }] }),
+    });
+    assert.equal(rNegPay.status, 403, 'wrap-odoo allowed negative vals_list account.payment/create');
+
+    // 8g. CLI --port flag alias parses cleanly into listen host:port
+    const parsedPortCli = parseCliArgs(['node', 'cli', 'wrap-odoo', '--upstream', 'http://127.0.0.1:8069', '--port', '8070', '--mode', 'observe']);
+    assert.equal(parsedPortCli.opts.listen, '127.0.0.1:8070');
+    assert.equal(parsedPortCli.opts.mode, 'observe');
   } finally {
     await enforceProxy.closeAsync();
     await observeProxy.closeAsync();

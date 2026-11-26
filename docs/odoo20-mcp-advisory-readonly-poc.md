@@ -27,7 +27,7 @@ Single-row SQL `CHECK` constraints (`debit * credit = 0`) also cannot detect mul
 2. Drop Apodictic in front in **zero-risk Shadow Observation (`observe`) mode**:
 
 ```bash
-npx @apodictic/mcp-verifier wrap-odoo \
+npx apodictic-mcp-verifier wrap-odoo \
   --upstream http://127.0.0.1:8069 \
   --listen 127.0.0.1:8070 \
   --mode observe \

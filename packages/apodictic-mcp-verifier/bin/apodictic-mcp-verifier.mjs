@@ -293,6 +293,13 @@ export function parseCliArgs(argv) {
     else if (a === '--state-db' && ownArgs[i + 1]) opts.stateDbPath = ownArgs[++i];
     else if (a === '--upstream' && ownArgs[i + 1]) opts.upstream = ownArgs[++i];
     else if (a === '--listen' && ownArgs[i + 1]) opts.listen = ownArgs[++i];
+    else if (a === '--port' && ownArgs[i + 1]) {
+      const portArg = Number(ownArgs[++i]);
+      if (Number.isFinite(portArg) && portArg > 0) {
+        const host = String(opts.listen || '127.0.0.1:8069').split(':')[0] || '127.0.0.1';
+        opts.listen = `${host}:${portArg}`;
+      }
+    }
     else if (a === '--mode' && ownArgs[i + 1]) opts.mode = ownArgs[++i];
     else if (a === '--bearer-scope' && ownArgs[i + 1]) opts.bearerScope = ownArgs[++i];
     else if (a === '--max-discount-pct' && ownArgs[i + 1]) opts.maxDiscountPct = Number(ownArgs[++i]);
@@ -1233,6 +1240,42 @@ function inspectOdooStockConservation(model, records, stockMap) {
   return { violated: false, detail: null, netDelta, nextBalances: tempBalances };
 }
 
+function extractOdooMonetaryAmount(body, records) {
+  const moneyKeys = ['amount', 'amount_total', 'payment_amount', 'amount_residual', 'total_amount', 'price_subtotal'];
+  let topLevelMax = 0;
+  let hasNegative = false;
+  if (body && typeof body === 'object') {
+    for (const k of moneyKeys) {
+      if (body[k] !== undefined && body[k] !== null) {
+        const v = Number(body[k]);
+        if (Number.isFinite(v)) {
+          if (v < 0) hasNegative = true;
+          else topLevelMax = Math.max(topLevelMax, v);
+        }
+      }
+    }
+  }
+  let recordsTotal = 0;
+  for (const rec of records) {
+    if (!rec || typeof rec !== 'object') continue;
+    let recAmt = 0;
+    for (const k of moneyKeys) {
+      if (rec[k] !== undefined && rec[k] !== null) {
+        const v = Number(rec[k]);
+        if (Number.isFinite(v)) {
+          if (v < 0) hasNegative = true;
+          else if (recAmt === 0) recAmt = v;
+        }
+      }
+    }
+    recordsTotal += recAmt;
+  }
+  return {
+    amount: Math.max(topLevelMax, recordsTotal),
+    hasNegative,
+  };
+}
+
 export function createOdooReverseProxyServer(rawOpts = {}) {
   const upstreamUrlStr = String(rawOpts.upstream || 'http://127.0.0.1:8069').replace(/\/+$/, '');
   const upstreamUrl = new URL(upstreamUrlStr);
@@ -1360,6 +1403,7 @@ export function createOdooReverseProxyServer(rawOpts = {}) {
     const de = extractOdooJournalTotals(records);
     const pl = inspectOdooPricelistBlastRadius(records);
     const stockCheck = inspectOdooStockConservation(model, records, stockMap);
+    const monetary = extractOdooMonetaryAmount(body, records);
 
     const effectiveBearerScope = String(
       req.headers['x-odoo-bearer-scope'] || body.bearer_scope || body.bearerScope || defaultBearerScope || ''
@@ -1368,6 +1412,9 @@ export function createOdooReverseProxyServer(rawOpts = {}) {
     const localViolations = [];
     if (effectiveBearerScope === 'mcp' && MUTATING_ODOO_METHODS.has(method.toLowerCase())) {
       localViolations.push('INV_ODOO20_MCP_READONLY_BYPASS');
+    }
+    if (monetary.hasNegative) {
+      localViolations.push('INV_NON_NEGATIVE');
     }
     if (de.hasLines && Math.abs(de.debitTotal - de.creditTotal) > 0.005) {
       localViolations.push('INV_DOUBLE_ENTRY_BALANCE');
@@ -1379,10 +1426,9 @@ export function createOdooReverseProxyServer(rawOpts = {}) {
       localViolations.push('INV_PRICELIST_BLAST_RADIUS');
     }
 
-    const numericAmount = Number(
-      body.amount ??
-        (de.hasLines ? Math.max(de.debitTotal, de.creditTotal) : 0) ??
-        0
+    const numericAmount = Math.max(
+      monetary.amount,
+      de.hasLines ? Math.max(de.debitTotal, de.creditTotal) : 0
     );
     const canonicalSql = `POST /json/2/${model}/${method}`;
     const cfoSigned = verifyCfoSignatureToken(

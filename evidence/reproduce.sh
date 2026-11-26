@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Apodictic — Independent Reproducibility & Cryptographic Verification Script (v3.10.0)
+# Apodictic — Independent Reproducibility & Cryptographic Verification Script (v3.10.1)
 # Usage: bash frontend/public/evidence/reproduce.sh
 set -euo pipefail
 [ -d "$HOME/.cargo/bin" ] && export PATH="$HOME/.cargo/bin:$PATH"
 
-echo "=== 1. Verifying 22-Artifact SHA-256 Evidence Manifest ==="
+echo "=== 1. Verifying 23-Artifact SHA-256 Evidence Manifest ==="
 (cd frontend/public/evidence && shasum -a 256 -c manifest.sha256)
 
 echo ""
@@ -26,4 +26,4 @@ node scripts/agent-self-heal-benchmark.mjs
 node scripts/pg17-concurrency-benchmark.mjs
 
 echo ""
-echo "ALL APODICTIC PROOFS, BENCHMARKS, AND 22/22 CHECKSUMS VERIFIED."
+echo "ALL APODICTIC PROOFS, BENCHMARKS, AND 23/23 CHECKSUMS VERIFIED."

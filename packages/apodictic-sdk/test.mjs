@@ -523,6 +523,46 @@ try {
     assert.match(String(wasmNegSqlRes.reason), /INV_NON_NEGATIVE/);
     assert.equal(wasmNegSqlRes.counterfactualPatch?.max_safe_amount, 0);
     assert.match(String(wasmNegSqlRes.counterfactualPatch?.patched_sql), /amount\s*=\s*0\b/);
+
+    // 24a. Regression checks (WASM): DR/**/OP, D\u200bROP, balance - -50000, pg_read_file, stateless velocity isolation
+    for (const badSql of [
+      'DR/**/OP TABLE tax_chain;',
+      'D\u200bROP TABLE tax_chain;',
+      'UPDATE accounts SET balance = balance - -50000 WHERE id = 1;',
+      'UPDATE accounts SET balance = balance - (30000 + 30000) WHERE id = 1;',
+      'UPDATE payouts SET amount = 30000 + 30000 WHERE id = 1;',
+      "SELECT pg_read_file('/etc/passwd');",
+    ]) {
+      const rBad = await wasmGw.verifyMutation({
+        sql: badSql,
+        accountId: 'wasm_reg_bad',
+        currentBalance: 100000,
+        minReserve: 25000,
+        maxAutonomousLimit: 50000,
+        stateless: true,
+      });
+      assert.equal(rBad.verified, false, `WASM regression bypass escaped: ${badSql}`);
+    }
+    const wasmVelCommit = await wasmGw.verifyMutation({
+      sql: 'UPDATE accounts SET balance = balance - 45000 WHERE id = 1;',
+      accountId: 'wasm_stateless_iso',
+      amount: 45000,
+      currentBalance: 200000,
+      minReserve: 25000,
+      maxAutonomousLimit: 50000,
+      stateless: false,
+    });
+    assert.equal(wasmVelCommit.verified, true);
+    const wasmVelStateless = await wasmGw.verifyMutation({
+      sql: 'UPDATE accounts SET balance = balance - 10000 WHERE id = 1;',
+      accountId: 'wasm_stateless_iso',
+      amount: 10000,
+      currentBalance: 200000,
+      minReserve: 25000,
+      maxAutonomousLimit: 50000,
+      stateless: true,
+    });
+    assert.equal(wasmVelStateless.verified, true, 'stateless: true leaked prior velocity in WASM');
   } finally {
     await wasmGw.close();
   }
@@ -538,6 +578,68 @@ try {
   assert.match(String(pyNegSqlRes.reason), /INV_NON_NEGATIVE/);
   assert.equal(pyNegSqlRes.counterfactualPatch?.max_safe_amount, 0);
   assert.match(String(pyNegSqlRes.counterfactualPatch?.patched_sql), /amount\s*=\s*0\b/);
+
+  // 24b. Regression checks (Python Monorepo + Standalone Python Enclave): obfuscation + stateless isolation
+  for (const badSql of [
+    'DR/**/OP TABLE tax_chain;',
+    'D\u200bROP TABLE tax_chain;',
+    'UPDATE accounts SET balance = balance - -50000 WHERE id = 1;',
+    "SELECT pg_read_file('/etc/passwd');",
+  ]) {
+    const rBadPy = await gw2.verifyMutation({
+      sql: badSql,
+      accountId: 'py_reg_bad',
+      currentBalance: 100000,
+      minReserve: 25000,
+      maxAutonomousLimit: 50000,
+      stateless: true,
+    });
+    assert.equal(rBadPy.verified, false, `Python regression bypass escaped: ${badSql}`);
+  }
+  const pyVelCommit = await gw2.verifyMutation({
+    sql: 'UPDATE accounts SET balance = balance - 45000 WHERE id = 1;',
+    accountId: 'py_stateless_iso',
+    amount: 45000,
+    currentBalance: 200000,
+    minReserve: 25000,
+    maxAutonomousLimit: 50000,
+    stateless: false,
+  });
+  assert.equal(pyVelCommit.verified, true);
+  const pyVelStateless = await gw2.verifyMutation({
+    sql: 'UPDATE accounts SET balance = balance - 10000 WHERE id = 1;',
+    accountId: 'py_stateless_iso',
+    amount: 10000,
+    currentBalance: 200000,
+    minReserve: 25000,
+    maxAutonomousLimit: 50000,
+    stateless: true,
+  });
+  assert.equal(pyVelStateless.verified, true, 'stateless: true leaked prior velocity in Python');
+
+  // Direct standalone_z3_enclave.py check with NO monorepo PYTHONPATH
+  const { execFileSync } = await import('node:child_process');
+  const standaloneCheck = execFileSync(
+    'python3',
+    [
+      '-c',
+      [
+        'import sys; sys.path.insert(0, "src")',
+        'from standalone_z3_enclave import StandaloneEnclaveSession',
+        's = StandaloneEnclaveSession(":memory:")',
+        'r1 = s.handle("verify_mutation", {"sql": "UPDATE payouts SET amount = -5000 WHERE id = 1;", "currentBalance": 250000, "minReserve": 50000, "maxAutonomousLimit": 50000, "stateless": True})',
+        'assert r1["verified"] is False and "INV_NON_NEGATIVE" in (r1.get("unsat_core") or [])',
+        'r2 = s.handle("verify_mutation", {"sql": "DR/**/OP TABLE tax_chain;", "currentBalance": 100000, "minReserve": 25000, "maxAutonomousLimit": 50000, "stateless": True})',
+        'assert r2["verified"] is False',
+        'r3 = s.handle("verify_mutation", {"sql": "UPDATE accounts SET balance = balance - -50000 WHERE id = 1;", "currentBalance": 100000, "minReserve": 25000, "maxAutonomousLimit": 50000, "stateless": True})',
+        'assert r3["verified"] is False',
+        'r4 = s.handle("verify_mutation", {"sql": "SELECT pg_read_file(\'/etc/passwd\');", "currentBalance": 100000, "minReserve": 25000, "maxAutonomousLimit": 50000, "stateless": True})',
+        'assert r4["verified"] is False',
+      ].join('; '),
+    ],
+    { cwd: path.dirname(new URL(import.meta.url).pathname), encoding: 'utf8' }
+  );
+  void standaloneCheck;
 
   console.log(`✓ Crash/restart durability, rollback persistence, 20x concurrency, ZATCA, Zero-PII HTTP gateway, Policy DAG, 2-phase escrow, RFC 6962, Mod-97/Luhn, Rust daemon, PGlite shadow firewall, z3.Optimize, adversarial SQL bypasses, Odoo 20 firewall, Zero-Python Z3 WASM, and negative SQL counterfactual clamp tests passed`);
 } finally {

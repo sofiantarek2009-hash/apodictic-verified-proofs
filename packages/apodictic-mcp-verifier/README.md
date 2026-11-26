@@ -1,4 +1,4 @@
-# `apodictic-mcp-verifier` (v3.10.0)
+# `apodictic-mcp-verifier` (v3.10.1)
 
 Drop-in Model Context Protocol (MCP) JSON-RPC 2.0 pre-commit verifier, stdio firewall, and **Odoo 18–20 `/json/2/` observe/enforce reverse proxy** for autonomous AI agents interacting with PostgreSQL, **Odoo 18–20 (`/json/2/` Bearer API, `/doc-bearer/`, & `/mcp`)**, Stripe, and enterprise ledgers.
 

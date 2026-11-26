@@ -59,6 +59,7 @@ const EXECUTE_STRING_RE = /\bEXECUTE\s+'((?:''|[^'])*)'/gi;
 const CHR_CALL_RE = /\bCHR\s*\(\s*([0-9]{1,3})\s*\)/gi;
 const HEX_DECODE_RE = /\bDECODE\s*\(\s*'([0-9A-Fa-f]+)'\s*,\s*'hex'\s*\)/gi;
 const B64_DECODE_RE = /\bDECODE\s*\(\s*'([A-Za-z0-9+/=]+)'\s*,\s*'base64'\s*\)/gi;
+const DANGEROUS_PG_FUNC_RE = /\b(?:pg_read_file|pg_read_binary_file|pg_ls_dir|pg_stat_file|lo_import|lo_export|lo_get|lo_put|dblink|dblink_exec|dblink_connect|pg_execute_server_program)\s*\(/i;
 const GENESIS_HASH = '0'.repeat(64);
 const AMT_COL_RE = /^(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)$/i;
 
@@ -314,6 +315,18 @@ export function analyzeSqlAstJs(sql, isOdooNonSqlPayload = false) {
     if (['DROP', 'TRUNCATE', 'DELETE', 'ALTER'].includes(highestOp)) anyUnbounded = true;
   }
 
+  for (const cand of [deobf, ...allClauses]) {
+    const scrubbedFn = String(cand).replace(/'(?:''|[^'])*'/g, " '' ");
+    if (DANGEROUS_PG_FUNC_RE.test(scrubbedFn)) {
+      hasBlockedCopyOrDdl = true;
+      if ((SEVERITY[highestOp] ?? 0) < SEVERITY.ALTER) highestOp = 'ALTER';
+      anyUnbounded = true;
+      mutatingCount += 1;
+      allHaveWhere = false;
+      break;
+    }
+  }
+
   if (hasBlockedCopyOrDdl || unverifiedBalanceExpr) {
     anyUnbounded = true;
   }
@@ -328,6 +341,67 @@ export function analyzeSqlAstJs(sql, isOdooNonSqlPayload = false) {
     unverified_balance_expr: unverifiedBalanceExpr,
     ast_engine: 'apodictic-balanced-ast-js',
   };
+}
+
+function evalConstArithJs(exprStr) {
+  const src = String(exprStr ?? '').trim();
+  if (!src || !/^[0-9.+\-*/()\s]+$/.test(src)) return null;
+  let pos = 0;
+  const skipWs = () => { while (pos < src.length && /\s/.test(src[pos])) pos++; };
+  const parseExpr = () => {
+    let val = parseTerm();
+    if (val === null) return null;
+    while (true) {
+      skipWs();
+      const ch = src[pos];
+      if (ch === '+' || ch === '-') {
+        pos++;
+        const rhs = parseTerm();
+        if (rhs === null) return null;
+        val = ch === '+' ? val + rhs : val - rhs;
+      } else break;
+    }
+    return val;
+  };
+  const parseTerm = () => {
+    let val = parseFactor();
+    if (val === null) return null;
+    while (true) {
+      skipWs();
+      const ch = src[pos];
+      if (ch === '*' || ch === '/') {
+        pos++;
+        const rhs = parseFactor();
+        if (rhs === null || (ch === '/' && rhs === 0)) return null;
+        val = ch === '*' ? val * rhs : val / rhs;
+      } else break;
+    }
+    return val;
+  };
+  const parseFactor = () => {
+    skipWs();
+    const ch = src[pos];
+    if (ch === '+' || ch === '-') {
+      pos++;
+      const f = parseFactor();
+      return f === null ? null : ch === '-' ? -f : f;
+    }
+    if (ch === '(') {
+      pos++;
+      const inner = parseExpr();
+      skipWs();
+      if (src[pos] !== ')') return null;
+      pos++;
+      return inner;
+    }
+    const m = src.slice(pos).match(/^[0-9]+(?:\.[0-9]+)?/);
+    if (!m) return null;
+    pos += m[0].length;
+    return Number(m[0]);
+  };
+  const out = parseExpr();
+  skipWs();
+  return pos === src.length && Number.isFinite(out) ? out : null;
 }
 
 export function extractSqlAmountJs(sql, currentBalance = 250000) {
@@ -351,24 +425,38 @@ export function extractSqlAmountJs(sql, currentBalance = 250000) {
     );
     for (const m of setBalMatches) {
       const rhs = m[1].trim();
-      if (/^(?:[A-Za-z_][A-Za-z0-9_.]*)\s*[-+]/i.test(rhs)) {
-        for (const subM of rhs.matchAll(/(?:-\s*|\+\s*\(\s*-\s*)([0-9]+(?:\.[0-9]+)?)/g)) {
-          total += Number(subM[1]);
+      const leadColMatch = rhs.match(/^([A-Za-z_][A-Za-z0-9_.]*)\s*([-+][\s\S]+)$/i);
+      if (leadColMatch) {
+        const delta = evalConstArithJs(`0 ${leadColMatch[2]}`);
+        if (delta !== null && delta < 0) {
+          total += Math.abs(delta);
+        } else if (delta === null) {
+          for (const subM of rhs.matchAll(/(?:-\s*|\+\s*\(\s*-\s*)([0-9]+(?:\.[0-9]+)?)/g)) {
+            total += Number(subM[1]);
+          }
         }
-      } else if (/^\s*[0-9]+(?:\.[0-9]+)?\s*$/.test(rhs)) {
-        const literalTarget = Number(rhs);
-        if (literalTarget <= 0) {
-          total = Math.max(total, currentBalance > 0 ? currentBalance : 1e9);
-        } else if (literalTarget < currentBalance) {
-          total += currentBalance - literalTarget;
+      } else {
+        const literalTarget = evalConstArithJs(rhs);
+        if (literalTarget !== null) {
+          if (literalTarget <= 0) {
+            total = Math.max(total, currentBalance > 0 ? currentBalance : 1e9);
+          } else if (literalTarget < currentBalance) {
+            total += currentBalance - literalTarget;
+          }
         }
       }
     }
 
     for (const m of clean.matchAll(
-      /\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*([0-9]+(?:\.[0-9]+)?)/gi
+      /\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*([^\n,;]+?)(?=\bWHERE\b|\bRETURNING\b|$)/gi
     )) {
-      total += Number(m[1]);
+      const evaluated = evalConstArithJs(m[1]);
+      if (evaluated !== null && evaluated > 0) {
+        total += evaluated;
+      } else {
+        const numM = m[1].trim().match(/^([0-9]+(?:\.[0-9]+)?)$/);
+        if (numM) total += Number(numM[1]);
+      }
     }
 
     for (const m of clean.matchAll(
@@ -469,6 +557,22 @@ function extractNegativeSqlLiteralJs(sql) {
 
   for (const cl of clauses) {
     const clean = cl.replace(/'(?:''|[^'])*'/g, " '' ");
+    for (const m of clean.matchAll(
+      /\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:balance|cash|reserve|available|funds|credit|equity)\s*=\s*(?:[A-Za-z_][A-Za-z0-9_.]*)\s*-\s*\(?\s*(-\s*[0-9]+(?:\.[0-9]+)?)\s*\)?/gi
+    )) {
+      const val = -Math.abs(Number(m[1].replace(/\s+/g, '')));
+      if (Number.isFinite(val) && val < 0) {
+        worstNeg = worstNeg === null ? val : Math.min(worstNeg, val);
+      }
+    }
+    for (const m of clean.matchAll(
+      /\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*-\s*-\s*([0-9]+(?:\.[0-9]+)?)/gi
+    )) {
+      const val = -Math.abs(Number(m[1]));
+      if (Number.isFinite(val) && val < 0) {
+        worstNeg = worstNeg === null ? val : Math.min(worstNeg, val);
+      }
+    }
     for (const m of clean.matchAll(
       /\b(?:[A-Za-z_][A-Za-z0-9_]*\.)?(?:amount|amt|total|total_amount|payment_amount|payout|disbursement|transfer_amount|debit|wire_amount|refund_amount)\s*=\s*(-\s*[0-9]+(?:\.[0-9]+)?)/gi
     )) {
@@ -868,7 +972,8 @@ export class Z3WasmEnclaveSession {
     const expVat = Number(params.expectedVat ?? 0.14);
 
     const existingAcct = this.db.prepare('SELECT balance, min_reserve FROM ledger_accounts WHERE account_id = ?').get(acct);
-    const usePersisted = Boolean(existingAcct) && !params.hasExplicitCurrentBalance && params.stateless !== true;
+    const isStateless = params.stateless === true;
+    const usePersisted = Boolean(existingAcct) && !params.hasExplicitCurrentBalance && !isStateless;
     const currBal = usePersisted
       ? Number(existingAcct.balance)
       : Number(params.currentBalance ?? 250000);
@@ -894,11 +999,14 @@ export class Z3WasmEnclaveSession {
     const revArmed = hasMulti ? false : !isDestructive;
 
     const cutoff = Date.now() / 1000 - 86400;
-    const priorSumRow = this.db
-      .prepare('SELECT COALESCE(SUM(amount), 0.0) AS s FROM velocity_events WHERE account_id = ? AND ts >= ?')
-      .get(acct, cutoff);
-    const priorSum = Number(priorSumRow?.s ?? 0);
-    const amtVal = negSqlAmt !== null && callerAmt === 0 ? negSqlAmt : Math.max(callerAmt, extractedAmt);
+    const priorSum = isStateless
+      ? 0
+      : Number(
+          this.db
+            .prepare('SELECT COALESCE(SUM(amount), 0.0) AS s FROM velocity_events WHERE account_id = ? AND ts >= ?')
+            .get(acct, cutoff)?.s ?? 0
+        );
+    const amtVal = negSqlAmt !== null ? negSqlAmt : Math.max(callerAmt, extractedAmt);
     const effectiveAmt = amtVal < 0 ? amtVal : amtVal + priorSum;
 
     const z3Proof = await runZ3WasmSmtProof({
@@ -947,7 +1055,7 @@ export class Z3WasmEnclaveSession {
       .digest('hex');
 
     const { blk, batchId, walBeforeImage, doubleEntryAcct, escrowStatus } = this._withImmediateTxSync(() => {
-      if (verified && amtVal > 0) {
+      if (!isStateless && verified && amtVal > 0) {
         this.db.prepare('INSERT INTO velocity_events (account_id, amount, ts) VALUES (?, ?, ?)').run(acct, amtVal, Date.now() / 1000);
       }
 
