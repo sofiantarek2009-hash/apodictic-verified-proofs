@@ -22,6 +22,7 @@ import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 let SymbolicGateway, PGlite;
 try {
@@ -278,12 +279,27 @@ export function parseCliArgs(argv) {
     reportOut: '',
     approvalPubkey: '',
     approvalPublicKeyPem: '',
+    input: '',
+    out: '',
+    format: 'html',
+    org: 'Enterprise Design Partner',
+    dsn: '',
+    schemaFile: '',
+    odooUrl: '',
+    odooToken: '',
+    odooDb: '',
+    hitlWebhook: '',
+    hitlFormat: 'auto',
+    hitlSecret: '',
+    workstationUrl: 'https://www.apodictic.dev/workstation',
+    json: false,
   };
 
   for (let i = sub ? 1 : 0; i < ownArgs.length; i++) {
     const a = ownArgs[i];
     if (a === '--help' || a === '-h') opts.help = true;
     else if (a === '--airgap') opts.airgap = true;
+    else if (a === '--json') opts.json = true;
     else if (a === '--endpoint' && ownArgs[i + 1]) opts.endpoint = ownArgs[++i];
     else if (a === '--api-key' && ownArgs[i + 1]) opts.apiKey = ownArgs[++i];
     else if (a === '--config' && ownArgs[i + 1]) opts.config = ownArgs[++i];
@@ -306,6 +322,19 @@ export function parseCliArgs(argv) {
     else if (a === '--max-branches' && ownArgs[i + 1]) opts.maxBranches = Number(ownArgs[++i]);
     else if (a === '--report-out' && ownArgs[i + 1]) opts.reportOut = ownArgs[++i];
     else if (a === '--approval-pubkey' && ownArgs[i + 1]) opts.approvalPubkey = ownArgs[++i];
+    else if (a === '--input' && ownArgs[i + 1]) opts.input = ownArgs[++i];
+    else if (a === '--out' && ownArgs[i + 1]) opts.out = ownArgs[++i];
+    else if (a === '--format' && ownArgs[i + 1]) opts.format = ownArgs[++i];
+    else if (a === '--org' && ownArgs[i + 1]) opts.org = ownArgs[++i];
+    else if (a === '--dsn' && ownArgs[i + 1]) opts.dsn = ownArgs[++i];
+    else if (a === '--schema-file' && ownArgs[i + 1]) opts.schemaFile = ownArgs[++i];
+    else if (a === '--odoo-url' && ownArgs[i + 1]) opts.odooUrl = ownArgs[++i];
+    else if (a === '--odoo-token' && ownArgs[i + 1]) opts.odooToken = ownArgs[++i];
+    else if (a === '--odoo-db' && ownArgs[i + 1]) opts.odooDb = ownArgs[++i];
+    else if (a === '--hitl-webhook' && ownArgs[i + 1]) opts.hitlWebhook = ownArgs[++i];
+    else if (a === '--hitl-format' && ownArgs[i + 1]) opts.hitlFormat = ownArgs[++i];
+    else if (a === '--hitl-secret' && ownArgs[i + 1]) opts.hitlSecret = ownArgs[++i];
+    else if (a === '--workstation-url' && ownArgs[i + 1]) opts.workstationUrl = ownArgs[++i];
   }
 
   if (opts.approvalPubkey && fs.existsSync(opts.approvalPubkey)) {
@@ -1488,6 +1517,22 @@ export function createOdooReverseProxyServer(rawOpts = {}) {
       report.recent_violations = [evt, ...report.recent_violations].slice(0, 20);
       appendJsonl(evt);
 
+      if (rawOpts.hitlWebhook) {
+        const txDigest = crypto
+          .createHash('sha256')
+          .update(`${canonicalSql}|${Number(numericAmount || 0).toFixed(2)}`)
+          .digest('hex');
+        void dispatchOdooHitlWebhook(rawOpts, {
+          tx_digest: txDigest,
+          amount: exposure,
+          model,
+          method,
+          verdict: evt.verdict,
+          violations: allViolations,
+          sanitized_payload: canonicalSql,
+        }).catch(() => {});
+      }
+
       if (mode === 'enforce') {
         report.blocked_count += 1;
         res.writeHead(403, {
@@ -1546,6 +1591,340 @@ export function createOdooReverseProxyServer(rawOpts = {}) {
   return server;
 }
 
+function escapeHtmlStr(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function buildHitlWebhookMessage({ webhookUrl, format = 'auto', workstationUrl = 'https://www.apodictic.dev/workstation', details }) {
+  const lowUrl = String(webhookUrl || '').toLowerCase();
+  const resolvedFmt =
+    format && format !== 'auto'
+      ? format.toLowerCase()
+      : lowUrl.includes('hooks.slack.com') || lowUrl.includes('slack')
+        ? 'slack'
+        : lowUrl.includes('webhook.office.com') || lowUrl.includes('logic.azure.com') || lowUrl.includes('teams')
+          ? 'teams'
+          : 'generic';
+  const base = String(workstationUrl || 'https://www.apodictic.dev/workstation').replace(/\/+$/, '');
+  const approveUrl = `${base}?approve_digest=${encodeURIComponent(details.tx_digest)}&amount=${Math.round(Number(details.amount || 0))}`;
+  const headline = `Apodictic blocked $${Number(details.amount || 0).toLocaleString()} write on ${details.model || 'postgres'}.${details.method || 'sql'} (${(details.violations || []).join(', ')})`;
+
+  if (resolvedFmt === 'slack') {
+    return {
+      text: headline,
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: 'Apodictic CFO Approval Required' } },
+        {
+          type: 'section',
+          fields: [
+            { type: 'mrkdwn', text: `*Exposure:*\n$${Number(details.amount || 0).toLocaleString()}` },
+            { type: 'mrkdwn', text: `*Digest:*\n\`${details.tx_digest}\`` },
+          ],
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*Violations:* \`${(details.violations || []).join(', ')}\`\n*Operation:* \`${details.sanitized_payload || details.model}\``,
+          },
+        },
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              style: 'primary',
+              text: { type: 'plain_text', text: 'Approve / Inspect in Workstation' },
+              url: approveUrl,
+            },
+          ],
+        },
+      ],
+      apodictic: { ...details, approve_url: approveUrl },
+    };
+  }
+  if (resolvedFmt === 'teams') {
+    return {
+      '@type': 'MessageCard',
+      '@context': 'https://schema.org/extensions',
+      themeColor: 'D4A853',
+      summary: headline,
+      title: 'Apodictic CFO Approval Required',
+      sections: [
+        {
+          facts: [
+            { name: 'Exposure', value: `$${Number(details.amount || 0).toLocaleString()}` },
+            { name: 'Transaction Digest', value: details.tx_digest },
+            { name: 'Violations', value: (details.violations || []).join(', ') },
+          ],
+          markdown: true,
+        },
+      ],
+      potentialAction: [
+        {
+          '@type': 'OpenUri',
+          name: 'Approve / Inspect in Workstation',
+          targets: [{ os: 'default', uri: approveUrl }],
+        },
+      ],
+    };
+  }
+  return {
+    event: 'APODICTIC_HITL_APPROVAL_REQUIRED',
+    ...details,
+    approve_url: approveUrl,
+  };
+}
+
+export async function dispatchOdooHitlWebhook(opts, details) {
+  if (!opts?.hitlWebhook) return null;
+  const payload = buildHitlWebhookMessage({
+    webhookUrl: opts.hitlWebhook,
+    format: opts.hitlFormat || 'auto',
+    workstationUrl: opts.workstationUrl || 'https://www.apodictic.dev/workstation',
+    details,
+  });
+  const body = JSON.stringify(payload);
+  const headers = { 'Content-Type': 'application/json' };
+  if (opts.hitlSecret) {
+    const sig = crypto.createHmac('sha256', String(opts.hitlSecret)).update(body).digest('hex');
+    headers['X-Apodictic-Signature'] = `sha256=${sig}`;
+  }
+  const resp = await fetch(opts.hitlWebhook, {
+    method: 'POST',
+    headers,
+    body,
+    signal: AbortSignal.timeout(3000),
+  });
+  return { status: resp.status, ok: resp.ok, payload };
+}
+
+export async function generateAuditReport(inputSource, opts = {}) {
+  const format = String(opts.format || 'html').toLowerCase();
+  const org = String(opts.org || 'Enterprise Design Partner');
+  let rawText = '';
+
+  if (/^https?:\/\//i.test(String(inputSource || ''))) {
+    const res = await fetch(inputSource, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch report input from ${inputSource}: HTTP ${res.status}`);
+    }
+    rawText = await res.text();
+  } else if (inputSource && fs.existsSync(inputSource)) {
+    rawText = fs.readFileSync(inputSource, 'utf8');
+  } else {
+    throw new Error(`Audit input source not found: ${inputSource || '(empty)'}`);
+  }
+
+  let events = [];
+  let totalInspected = 0;
+  let violationsDetected = 0;
+  let totalExposureUsd = 0;
+  const byInvariant = {};
+
+  const trimmed = rawText.trim();
+  let singleObj = null;
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsedObj = JSON.parse(trimmed);
+      if (parsedObj && (Array.isArray(parsedObj.top_violations) || Array.isArray(parsedObj.recent_violations))) {
+        singleObj = parsedObj;
+      }
+    } catch {
+      singleObj = null;
+    }
+  }
+  if (singleObj) {
+    const obj = singleObj;
+    if (Array.isArray(obj.top_violations)) {
+      totalInspected = Number(obj.total_observed ?? obj.top_violations.length);
+      violationsDetected = Number(obj.total_violations ?? obj.top_violations.length);
+      totalExposureUsd = Number(obj.total_exposure_usd ?? 0);
+      Object.assign(byInvariant, obj.by_invariant || {});
+      events = obj.top_violations.map((v) => ({
+        timestamp: v.timestamp_ms ? new Date(Number(v.timestamp_ms)).toISOString() : '',
+        mode: v.mode || 'observe',
+        verdict: v.verdict || 'WOULD_BLOCK',
+        target: 'postgresql',
+        violations: v.invariants || [],
+        exposure_usd: Number(v.dollar_exposure ?? 0),
+        sanitized_sql: v.sanitized_sql || '',
+      }));
+    } else if (Array.isArray(obj.recent_violations)) {
+      totalInspected = Number(obj.total_mutations ?? obj.total_requests ?? obj.recent_violations.length);
+      violationsDetected = Number(obj.violations_detected ?? obj.recent_violations.length);
+      totalExposureUsd = Number(obj.exposure_usd ?? 0);
+      Object.assign(byInvariant, obj.by_invariant || {});
+      events = obj.recent_violations.map((v) => ({
+        timestamp: v.timestamp || '',
+        mode: v.mode || 'observe',
+        verdict: v.verdict || 'WOULD_BLOCK',
+        target: `${v.model || 'odoo'}.${v.method || 'write'}`,
+        violations: v.violations || [],
+        exposure_usd: Number(v.exposure_usd ?? 0),
+        sanitized_sql: `${v.model || 'odoo'}/${v.method || 'write'}`,
+      }));
+    }
+  } else {
+    const lines = trimmed ? trimmed.split(/\r?\n/).filter(Boolean) : [];
+    for (const ln of lines) {
+      const ev = JSON.parse(ln);
+      totalInspected += 1;
+      const isBad = ['WOULD_BLOCK', 'BLOCKED', 'BLOCK', 'UNSAT'].includes(String(ev.verdict || '').toUpperCase());
+      if (isBad) {
+        violationsDetected += 1;
+        const exp = Math.max(0, Number(ev.exposure_usd ?? ev.dollar_exposure ?? 0));
+        totalExposureUsd += exp;
+        for (const inv of ev.violations || ev.invariants || []) {
+          byInvariant[inv] = (byInvariant[inv] || 0) + 1;
+        }
+        events.push({
+          timestamp: ev.timestamp || '',
+          mode: ev.mode || 'observe',
+          verdict: ev.verdict || 'WOULD_BLOCK',
+          target: ev.model ? `${ev.model}.${ev.method || 'write'}` : 'postgresql',
+          violations: ev.violations || ev.invariants || [],
+          exposure_usd: exp,
+          sanitized_sql: ev.sanitized_sql || (ev.model ? `/json/2/${ev.model}/${ev.method}` : ''),
+        });
+      }
+    }
+  }
+
+  events.sort((a, b) => b.exposure_usd - a.exposure_usd);
+  const inputSha256 = crypto.createHash('sha256').update(rawText, 'utf8').digest('hex');
+  const summaryObj = {
+    generated_at: new Date().toISOString(),
+    organization: org,
+    total_inspected: totalInspected,
+    violations_detected: violationsDetected,
+    total_exposure_usd: Number(totalExposureUsd.toFixed(2)),
+    by_invariant: byInvariant,
+    input_sha256: inputSha256,
+    top_violations: events.slice(0, 20),
+    promote_commands: {
+      postgres: 'apodictic_pg_proxy --listen 127.0.0.1:5433 --upstream 127.0.0.1:5432 --mode enforce --savepoint-mode',
+      odoo: 'npx apodictic-mcp-verifier wrap-odoo --upstream http://127.0.0.1:8069 --listen 127.0.0.1:8070 --mode enforce',
+    },
+  };
+
+  let rendered;
+  if (format === 'json') {
+    rendered = JSON.stringify(summaryObj, null, 2);
+  } else if (format === 'markdown' || format === 'md') {
+    const rows = Object.entries(byInvariant)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `- \`${k}\`: **${v}** incident(s)`)
+      .join('\n');
+    const top = summaryObj.top_violations
+      .map((e, i) => `${i + 1}. \`[${e.mode} / ${e.verdict}]\` **$${e.exposure_usd.toLocaleString()}** — \`${e.target}\` (${e.violations.join(', ')})`)
+      .join('\n');
+    rendered = `# Apodictic Executive Shadow Audit Report — ${org}\n\n` +
+      `- **Inspected Mutations:** ${totalInspected}\n` +
+      `- **Unsafe Writes Caught:** ${violationsDetected}\n` +
+      `- **Exposure Prevented:** $${summaryObj.total_exposure_usd.toLocaleString()}\n` +
+      `- **Input SHA-256 Digest:** \`${inputSha256}\`\n\n` +
+      `## Violations by Formal Invariant\n${rows || '- None'}\n\n` +
+      `## Top Incidents\n${top || '- None'}\n\n` +
+      `## Promote to Pre-Commit Enforce Mode\n\`\`\`bash\n${summaryObj.promote_commands.odoo}\n\`\`\`\n`;
+  } else {
+    const invHtml = Object.entries(byInvariant)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `<tr><td><code>${escapeHtmlStr(k)}</code></td><td class="num">${v}</td></tr>`)
+      .join('\n') || '<tr><td colspan="2">Zero violations detected</td></tr>';
+    const topHtml = summaryObj.top_violations
+      .map(
+        (e, i) =>
+          `<tr><td class="num">${i + 1}</td><td><code>${escapeHtmlStr(e.mode)}</code></td><td><code>${escapeHtmlStr(e.verdict)}</code></td><td class="num">$${e.exposure_usd.toLocaleString()}</td><td><code>${escapeHtmlStr(e.violations.join(', '))}</code></td><td><code>${escapeHtmlStr(e.sanitized_sql || e.target)}</code></td></tr>`
+      )
+      .join('\n') || '<tr><td colspan="6">No blocked or would-block incidents in log</td></tr>';
+
+    rendered = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><title>Apodictic Shadow Audit Report — ${escapeHtmlStr(org)}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #07080a; color: #ededed; padding: 32px; margin: 0; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  .eyebrow { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #D4A853; }
+  h1 { margin: 8px 0 4px; font-size: 26px; font-weight: 500; }
+  .sub { color: #a1a1aa; font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
+  .card { background: #0b0c10; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .val { font-family: ui-monospace, Menlo, monospace; font-size: 26px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+  th, td { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  pre { background: #050608; border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 8px; color: #34d399; overflow-x: auto; font-size: 12px; }
+  @media print { body { background: #fff; color: #111; } .card, pre { background: #f9fafb; border-color: #d1d5db; color: #111; } }
+</style></head><body><div class="wrap">
+  <div class="eyebrow">APODICTIC SHADOW AUDIT REPORT · ${escapeHtmlStr(org)}</div>
+  <h1>Executive Pre-Commit Risk &amp; Exposure Summary</h1>
+  <p class="sub">Input SHA-256: <code>${inputSha256}</code></p>
+  <div class="grid">
+    <div class="card"><div class="sub">Mutations Inspected</div><div class="val">${totalInspected}</div></div>
+    <div class="card"><div class="sub">Unsafe Writes Flagged</div><div class="val" style="color:#f43f5e">${violationsDetected}</div></div>
+    <div class="card"><div class="sub">Exposure Prevented</div><div class="val" style="color:#D4A853">$${summaryObj.total_exposure_usd.toLocaleString()}</div></div>
+  </div>
+  <div class="card"><h2>Breakdown by Formal Invariant</h2><table><thead><tr><th>Invariant</th><th class="num">Count</th></tr></thead><tbody>${invHtml}</tbody></table></div>
+  <div class="card"><h2>Top Flagged Operations</h2><table><thead><tr><th class="num">#</th><th>Mode</th><th>Verdict</th><th class="num">Exposure</th><th>Invariants</th><th>Target / Sanitized Payload</th></tr></thead><tbody>${topHtml}</tbody></table></div>
+  <div class="card"><h2>1-Step Switch to Synchronous Enforcement</h2><pre>${escapeHtmlStr(summaryObj.promote_commands.odoo)}\n${escapeHtmlStr(summaryObj.promote_commands.postgres)}</pre></div>
+</div></body></html>`;
+  }
+
+  if (opts.out) {
+    fs.mkdirSync(path.dirname(path.resolve(opts.out)), { recursive: true });
+    fs.writeFileSync(opts.out, rendered, 'utf8');
+  }
+  return { summary: summaryObj, rendered };
+}
+
+async function loadSchemaDiscoveryModule() {
+  const cliDir = path.dirname(fileURLToPath(import.meta.url));
+  const localSibling = path.resolve(cliDir, '..', '..', 'apodictic-sdk', 'src', 'schema_discovery.mjs');
+  if (fs.existsSync(localSibling)) {
+    return import(pathToFileURL(localSibling).href);
+  }
+  return import('apodictic-sdk/schema-discovery');
+}
+
+export async function runSchemaInit(opts = {}) {
+  const mod = await loadSchemaDiscoveryModule();
+  let discovery;
+  if (opts.dsn) {
+    discovery = await mod.discoverSchemaFromPgDsn(opts.dsn);
+  } else if (opts.schemaFile) {
+    if (!fs.existsSync(opts.schemaFile)) {
+      throw new Error(`Schema SQL file not found: ${opts.schemaFile}`);
+    }
+    discovery = mod.discoverSchemaFromSql(fs.readFileSync(opts.schemaFile, 'utf8'), { source: opts.schemaFile });
+  } else if (opts.odooUrl) {
+    discovery = await mod.discoverSchemaFromOdoo(opts.odooUrl, {
+      token: opts.odooToken || undefined,
+      db: opts.odooDb || undefined,
+    });
+  } else {
+    throw new Error('init requires one of --dsn <pg_url>, --schema-file <path.sql>, or --odoo-url <url>');
+  }
+
+  const compiled = await mod.compileDiscoveredPolicyIr(discovery, {
+    spendCapUsd: opts.maxAutonomousLimit,
+    minReserveUsd: opts.minReserve,
+    maxDiscountPct: opts.maxDiscountPct,
+    maxBranches: opts.maxBranches,
+  });
+
+  const outJson = JSON.stringify(compiled.policy_ir, null, 2);
+  if (opts.out) {
+    fs.mkdirSync(path.dirname(path.resolve(opts.out)), { recursive: true });
+    fs.writeFileSync(opts.out, `${outJson}\n`, 'utf8');
+  }
+  return compiled;
+}
+
 const isEntrypoint =
   process.argv[1] &&
   (process.argv[1].endsWith('apodictic-mcp-verifier.mjs') || process.argv[1].endsWith('apodictic-mcp-verifier'));
@@ -1554,7 +1933,7 @@ if (isEntrypoint) {
   const { sub, opts, childCmdArgs } = parseCliArgs(process.argv);
   if (opts.help) {
     console.log(
-      'Usage:\n  apodictic-mcp-verifier demo\n  apodictic-mcp-verifier serve [--airgap] [--config <path>] [--endpoint <url>]\n  apodictic-mcp-verifier wrap [--airgap] [--config <path>] -- <mcp-server-cmd> [args...]\n  apodictic-mcp-verifier wrap-odoo --upstream <url> [--listen 127.0.0.1:8069] [--mode observe|enforce] [--bearer-scope mcp|rpc] [--report-out <jsonl>]'
+      'Usage:\n  apodictic-mcp-verifier demo\n  apodictic-mcp-verifier serve [--airgap] [--config <path>] [--endpoint <url>]\n  apodictic-mcp-verifier wrap [--airgap] [--config <path>] -- <mcp-server-cmd> [args...]\n  apodictic-mcp-verifier wrap-odoo --upstream <url> [--listen 127.0.0.1:8069] [--mode observe|enforce] [--bearer-scope mcp|rpc] [--report-out <jsonl>] [--hitl-webhook <url>] [--hitl-secret <hmac>] [--hitl-format auto|slack|teams|generic]\n  apodictic-mcp-verifier init (--dsn <pg_url> | --schema-file <schema.sql> | --odoo-url <url>) [--out policy.ir.json]\n  apodictic-mcp-verifier audit-report --input <shadow.jsonl|report.json|url> [--format html|markdown|json] [--org <name>] [--out report.html]'
     );
     process.exit(0);
   } else if (sub === 'demo') {
@@ -1564,6 +1943,20 @@ if (isEntrypoint) {
     await runStandaloneServer(opts);
   } else if (sub === 'wrap' && childCmdArgs.length > 0 && childCmdArgs[0]) {
     await runStdioProxy(childCmdArgs[0], childCmdArgs.slice(1), opts);
+  } else if (sub === 'init') {
+    const compiled = await runSchemaInit(opts);
+    console.log(JSON.stringify(compiled, null, 2));
+    process.exit(compiled.deadlock_check?.consistent ? 0 : 2);
+  } else if (sub === 'audit-report') {
+    const res = await generateAuditReport(opts.input, opts);
+    if (opts.out && opts.json) {
+      console.log(JSON.stringify({ out: opts.out, ...res.summary }, null, 2));
+    } else if (!opts.out) {
+      console.log(res.rendered);
+    } else {
+      console.log(JSON.stringify({ status: 'OK', out: opts.out, summary: res.summary }, null, 2));
+    }
+    process.exit(0);
   } else if (sub === 'wrap-odoo') {
     if (!opts.upstream) {
       console.error('Error: wrap-odoo requires --upstream <url>');

@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-11-26T20:52:00Z",
+  "organization": "Apodictic Systems",
+  "security_contact": "sofianmousa@apodictic.dev",
+  "status_disclosure": "Pre-audit readiness & verifiable control evidence. Formal SOC 2 Type II audit and independent external penetration test are scheduled for Q1 2027 and are NOT claimed as active certifications.",
+  "soc2_trust_services_mapping": [
+    {
+      "criteria": "CC6.1 / CC6.6 — Logical Access & Network Boundary Controls",
+      "control_title": "Fail-closed Wire Proxy & Credential/VPC Isolation + SPIFFE Workload Verification",
+      "implementation": "Apodictic Wire Proxy (pgwire 0.42.3) buffers BEGIN/COMMIT/ROLLBACK and validates every SQL AST + Z3 proof before forwarding to upstream PostgreSQL; optional SPIFFE SVID verification fails closed (HTTP 401); air-gapped Docker/systemd bundles run with zero external egress.",
+      "evidence_artifacts": [
+        "evidence/pg17-concurrency-receipt.json",
+        "evidence/fuzz-corpus-receipt.json",
+        "evidence/adversarial-redteam-receipt.json"
+      ]
+    },
+    {
+      "criteria": "CC6.7 — Data Classification, Zero-PII Boundary & Encryption",
+      "control_title": "Deterministic NIST SP 800-38G AES-256-FF1 FPE & SYM_* SQL AST Sanitizer",
+      "implementation": "IBANs (Mod-97), PANs (Luhn), emails, Tax IDs, PostgreSQL DSNs, and bearer/API secrets are replaced bijectively with SYM_* tokens before cloud LLM egress across Rust (apodictic-zero-leak-sanitizer), TypeScript SDK, and Python enclaves.",
+      "evidence_artifacts": [
+        "evidence/adversarial-redteam-receipt.json",
+        "evidence/rust-workspace-receipt.txt"
+      ]
+    },
+    {
+      "criteria": "CC7.2 — System Anomaly Monitoring & Continuous Fuzz Testing",
+      "control_title": "1,000,000-Iteration Wire Protocol Fuzzer & Observe-First Shadow Telemetry",
+      "implementation": "Deterministic wire-protocol fuzzer + proptest exercises malformed length bombs (>16 MiB), split-TCP fragmentation, corrupted Parse/Bind/Execute packets, invalid UTF-8, and SQL bypasses nightly; --mode observe logs WOULD_BLOCK exposure to WORM WAL and exports printable CFO/CTO HTML audit reports.",
+      "evidence_artifacts": [
+        "evidence/fuzz-corpus-receipt.json",
+        "evidence/rust-workspace-receipt.txt"
+      ]
+    },
+    {
+      "criteria": "CC8.1 — Change Management & Policy Integrity",
+      "control_title": "SHA-256 Immutable Policy IR + Z3 Deadlock Consistency Verification + Dual-Solver Agreement",
+      "implementation": "Policy rules compile to typed Policy IR verified deadlock-free by Z3 SMT before activation (defaulting new rules to OBSERVE); native Rust proxy requires both libz3 and pure-Rust OxiZ 0.3.4 to agree before permitting financial mutations.",
+      "evidence_artifacts": [
+        "evidence/vitest-verification-receipt.txt",
+        "evidence/self-heal-benchmark.json"
+      ]
+    },
+    {
+      "criteria": "PI1.4 — Processing Integrity & Compensating Rollback",
+      "control_title": "SAVEPOINT Trigger Capture, Single-Use Ed25519 HITL Tokens & SHA-256/RFC 6962 WORM Vault",
+      "implementation": "PostgreSQL SAVEPOINT captures hidden PL/pgSQL AFTER UPDATE triggers & ON DELETE CASCADE inside rolled-back subtransactions; Odoo 18-20 mutations run <38ms account.move.reversal; high-value writes park for single-use tx_digest-bound Ed25519 CFO approval delivered via HMAC-SHA256 Slack/Teams webhooks; WORM audit vault chains SHA-256 + RFC 6962 Merkle proofs.",
+      "evidence_artifacts": [
+        "evidence/adversarial-redteam-receipt.json",
+        "evidence/idempotency-proof.log",
+        "evidence/crash-matrix.csv"
+      ]
+    }
+  ],
+  "ciso_questionnaire_responses": [
+    { "id": "CISO-01", "topic": "Deployment Architecture", "answer": "Customer-hosted air-gapped server-room binary/Docker (static Linux x86_64 & aarch64 musl tarballs with SHA256SUMS + systemd unit, zero outbound internet) or Hybrid Zero-PII gateway." },
+    { "id": "CISO-02", "topic": "Customer PII Egress", "answer": "Zero raw PII egress inside the gateway boundary. IBAN, credit card PAN, emails, Tax IDs, DB DSNs, and bearer/API secrets are bijectively replaced with SYM_* tokens locally before any LLM call." },
+    { "id": "CISO-03", "topic": "Fail-Closed Behavior", "answer": "Solver crash, timeout (>50ms QF_LIA cutoff), libz3 vs. OxiZ divergence, malformed PostgreSQL frames (>16 MiB or invalid length), or missing approval tokens default fail-closed and return SQLSTATE 40001 / 42501 / 28000 / HTTP 403." },
+    { "id": "CISO-04", "topic": "Direct DB Write Bypass Prevention", "answer": "Enforced via customer VPC firewall / pg_hba.conf restricting AI agent service credentials strictly to the Apodictic proxy listener (port 5433) with upstream credentials vaulted." },
+    { "id": "CISO-05", "topic": "Hidden Triggers & ON DELETE CASCADE", "answer": "Verified via --savepoint-mode (PostgreSQL) and PGlite 18.7 shadow execution: wraps queries in SAVEPOINT, observes actual trigger/cascade state diffs, and rolls back automatically on invariant breach (32/32 trigger drains caught in live PostgreSQL 17 CI)." },
+    { "id": "CISO-06", "topic": "Human-in-the-Loop Crypto Controls", "answer": "High-value writes (>spend cap) park and dispatch Slack/Teams webhooks signed with X-Apodictic-Signature HMAC-SHA256. Approvals require single-use Ed25519 capability tokens cryptographically bound to sha256(canonical_sql|amount) with single-consume jti replay protection." },
+    { "id": "CISO-07", "topic": "Odoo 20 Agentic Surface", "answer": "Addresses Odoo 20 /json/2/ Bearer APIs, enforces advisory bearer_scope='mcp' as hard fail-closed blocking on mutating methods, protects against posted move tamper, and dispatches compensating account.move.reversal entries." },
+    { "id": "CISO-08", "topic": "Wire Parser Memory Safety & Fuzzing", "answer": "Implemented in safe Rust (apodictic-wire-proxy) with bounded 16 MiB frame checks and tested against 1,000,000 adversarial fuzzed wire frames + 512 proptest cases (0 panics, 0 hostile SQL bypasses)." },
+    { "id": "CISO-09", "topic": "Tamper-Evident Audit Logging", "answer": "Every observation and block appends to an hash-chained WORM SQLite/file vault + RFC 6962 binary Merkle inclusion proof log; verified surviving SIGKILL at 4 execution phases." },
+    { "id": "CISO-10", "topic": "Zero-Disruption Adoption", "answer": "Defaults new policies and offline installers to --mode observe so teams collect a signed CFO/CTO Shadow Audit Report before toggling --mode enforce." },
+    { "id": "CISO-11", "topic": "SOC 2 Type II & External Pentest Status", "answer": "Internal evidence suite (26/26 SHA-256 sealed artifacts + live PostgreSQL 17 GitHub Actions CI) is publicly reproducible today; formal external SOC 2 Type II audit & independent penetration test are scheduled Q1 2027." }
+  ],
+  "test_inventory_summary": {
+    "rust_workspace_tests_passed": 182,
+    "rust_crates": 9,
+    "vitest_tests_passed": 49,
+    "vitest_test_files": 10,
+    "python_engine_and_odoo_tests_passed": 72,
+    "wire_fuzzer_iterations": 1000000,
+    "wire_fuzzer_panics": 0,
+    "live_postgres17_ci_workers": 64
+  }
+}

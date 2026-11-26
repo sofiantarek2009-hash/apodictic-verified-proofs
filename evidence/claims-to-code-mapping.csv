@@ -18,5 +18,11 @@ Native Cedar 4.15 + OPA Regorus 0.15 + Google CEL,apodictic_infra/crates/apodict
 WASM PGlite shadow execution + Z3 proof,packages/apodictic-sdk/src/pglite_shadow.mjs,frontend/__tests__/unit/moats-api.test.ts
 NIST SP 800-38G AES-256-FF1 format-preserving FPE,apodictic_infra/crates/apodictic-zero-leak-sanitizer/src/lib.rs,evidence/rust-workspace-receipt.txt
 SPIFFE SVID identity & C2SP tlog-tiles export,frontend/lib/apodictic/crypto.ts,frontend/app/api/apodictic/worm-vault/route.ts
-Reproducible multi-suite execution & 47-test Vitest verification,frontend/public/evidence/reproduce.sh,evidence/vitest-verification-receipt.txt
+Reproducible multi-suite execution & 49-test Vitest verification,frontend/public/evidence/reproduce.sh,evidence/vitest-verification-receipt.txt
 40/40 multi-engine adversarial SQL red-team & 64-worker native PostgreSQL 17 CI proof,scripts/adversarial-redteam-audit.mjs,evidence/adversarial-redteam-receipt.json
+1000000-iteration PostgreSQL v3.0 wire-parser fuzzer & proptest suite,apodictic_infra/crates/apodictic-cli-admin/src/bin/apodictic_wire_fuzzer.rs,evidence/fuzz-corpus-receipt.json
+CISO security questionnaire & SOC 2 Trust Services control mapping,evidence/ciso-soc2-readiness-packet.json,evidence/ciso-soc2-readiness-packet.json
+Read-only schema auto-discovery & Z3 Policy IR generator,packages/apodictic-sdk/src/schema_discovery.mjs,packages/apodictic-sdk/test.mjs
+Drop-in LangGraph / OpenAI Agents / Vercel AI tool adapters,packages/apodictic-sdk/src/adapters/langgraph.mjs,packages/apodictic-sdk/test.mjs
+Odoo 18-20 partner settings & HMAC ingest addon,addons/apodictic_odoo_guard/controllers/main.py,apodictic_engine/tests/test_odoo_partner_module.py
+Slack/Teams HMAC-SHA256 HITL webhooks & HTML shadow audit report generator,apodictic_infra/crates/apodictic-wire-proxy/src/approval.rs,packages/apodictic-mcp-verifier/test.mjs

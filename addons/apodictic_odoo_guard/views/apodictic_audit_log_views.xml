@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_apodictic_audit_event_list" model="ir.ui.view">
+        <field name="name">apodictic.audit.event.list</field>
+        <field name="model">apodictic.audit.event</field>
+        <field name="arch" type="xml">
+            <list string="Apodictic Pre-Commit Firewall Audit Log" create="false" edit="false" delete="false">
+                <field name="occurred_at"/>
+                <field name="mode"/>
+                <field name="verdict"/>
+                <field name="model_name"/>
+                <field name="method_name"/>
+                <field name="exposure_usd"/>
+                <field name="violations"/>
+                <field name="tx_digest"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_apodictic_audit_events" model="ir.actions.act_window">
+        <field name="name">Apodictic Guardrail Log</field>
+        <field name="res_model">apodictic.audit.event</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <menuitem
+        id="menu_apodictic_audit_events"
+        name="Apodictic Firewall Log"
+        parent="account.menu_finance_reports"
+        action="action_apodictic_audit_events"
+        sequence="99"
+    />
+</odoo>

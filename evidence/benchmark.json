@@ -1,9 +1,9 @@
 {
-  "schema_version": "apodictic-benchmark-v3.10.1",
-  "generated_at_utc": "2026-11-26T16:15:00Z",
-  "host": "Darwin arm64 / Python 3.9.8 / Node.js v22 / Z3 5.4.1",
+  "schema_version": "apodictic-benchmark-v3.11.0",
+  "generated_at_utc": "2026-11-26T20:52:00Z",
+  "host": "Darwin arm64 / Python 3.9.8 / Node.js v22 / Z3 5.4.1 / Rust 1.100.0",
   "rust_sql_ast_libz3_c_ffi": {
-    "kernel": "apodictic-rust-systems-kernel-v3.10.1",
+    "kernel": "apodictic-rust-systems-kernel-v3.11.0",
     "rustc_arch": "aarch64",
     "daemon_mode": true,
     "z3_c_version": "5.4.1.0",
@@ -15,15 +15,23 @@
     "unsat_core_sample": "(INV_LIQUIDITY_FLOOR INV_SPEND_CAP)"
   },
   "suites": {
-    "cargo_test_workspace_9_crates_176_tests": {
+    "cargo_test_workspace_9_crates_182_tests": {
       "exit_code": 0,
-      "tests_passed": 176,
+      "tests_passed": 182,
       "crates": 9
     },
-    "vitest_verification_engine_9_files_47_tests": {
+    "wire_fuzzer_1m_iterations": {
       "exit_code": 0,
-      "tests_passed": 47,
-      "test_files": 9
+      "iterations": 1000000,
+      "panics": 0,
+      "hostile_sql_bypasses": 0,
+      "throughput_frames_per_sec": 21528,
+      "receipt": "fuzz-corpus-receipt.json"
+    },
+    "vitest_verification_engine_10_files_49_tests": {
+      "exit_code": 0,
+      "tests_passed": 49,
+      "test_files": 10
     },
     "pg17_concurrency_and_savepoint_triggers_16_workers": {
       "exit_code": 0,
@@ -44,10 +52,10 @@
       "latency_p50_ms": 5.904,
       "receipt": "self-heal-benchmark.json"
     },
-    "python_engine_unittest_67_cases": {
+    "python_engine_and_odoo_addon_72_cases": {
       "exit_code": 0,
-      "tests_passed": 67,
-      "duration_ms": 6702.0
+      "tests_passed": 72,
+      "duration_ms": 6081.0
     },
     "proxy_benchmark_250_iters": {
       "exit_code": 0,

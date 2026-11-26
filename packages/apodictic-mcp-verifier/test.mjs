@@ -7,10 +7,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  buildHitlWebhookMessage,
   computeApprovalTxDigest,
   createOdooReverseProxyServer,
+  generateAuditReport,
   inspectMcpEnvelope,
   parseCliArgs,
+  runSchemaInit,
   scanApodicticMcpToolGuard,
   signEd25519ApprovalToken,
 } from './bin/apodictic-mcp-verifier.mjs';
@@ -489,7 +492,121 @@ rl.on('line', (l) => {
     await new Promise((r) => mockOdoo.close(() => r()));
   }
 
-  console.log('✓ @apodictic/mcp-verifier 8-tool spec handshake, schema validation, payload guard, wrap firewall, Ed25519 single-use tokens, wrap-odoo reverse proxy, policy DAG, RFC 6962, and Z3 tests passed');
+  // 9. audit-report HTML + XSS escaping + init (--schema-file & --odoo-url) + HITL Webhook (Slack/Teams + HMAC-SHA256)
+  const hitlSecret = 'mcp_webhook_test_secret';
+  let capturedWebhookReq = null;
+  const webhookSrv = http.createServer((req, res) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      const bodyStr = Buffer.concat(chunks).toString('utf8');
+      capturedWebhookReq = {
+        headers: req.headers,
+        bodyStr,
+        json: JSON.parse(bodyStr),
+      };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('{"ok":true}');
+    });
+  });
+  await new Promise((r) => webhookSrv.listen(0, '127.0.0.1', r));
+  const webhookPort = webhookSrv.address().port;
+
+  const mockDocOdoo = http.createServer((req, res) => {
+    if (req.url?.startsWith('/doc-bearer/account.move.json')) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ properties: { name: { type: 'string' }, amount_total: { type: 'number' }, line_ids: { type: 'array' } } }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+  });
+  await new Promise((r) => mockDocOdoo.listen(0, '127.0.0.1', r));
+  const docOdooBase = `http://127.0.0.1:${mockDocOdoo.address().port}`;
+
+  const hitlProxy = createOdooReverseProxyServer({
+    upstream: docOdooBase,
+    mode: 'enforce',
+    currentBalance: 250000,
+    minReserve: 50000,
+    maxAutonomousLimit: 50000,
+    hitlWebhook: `http://127.0.0.1:${webhookPort}/hooks/slack`,
+    hitlFormat: 'slack',
+    hitlSecret,
+    workstationUrl: 'https://www.apodictic.dev/workstation',
+  });
+  await new Promise((r) => hitlProxy.listen(0, '127.0.0.1', r));
+  const hitlProxyBase = `http://127.0.0.1:${hitlProxy.address().port}`;
+
+  try {
+    const overPayRes = await fetch(`${hitlProxyBase}/json/2/account.payment/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vals_list: [{ amount: 85000, partner_id: 9 }] }),
+    });
+    assert.equal(overPayRes.status, 403);
+    for (let k = 0; k < 25 && !capturedWebhookReq; k++) {
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    assert.ok(capturedWebhookReq, 'Expected async HITL webhook POST to mock Slack receiver');
+    const expectedHmac =
+      'sha256=' + crypto.createHmac('sha256', hitlSecret).update(capturedWebhookReq.bodyStr).digest('hex');
+    assert.equal(capturedWebhookReq.headers['x-apodictic-signature'], expectedHmac);
+    assert.equal(capturedWebhookReq.json.apodictic.amount, 85000);
+    assert.ok(capturedWebhookReq.json.apodictic.approve_url.includes('/workstation?approve_digest='));
+    assert.ok(Array.isArray(capturedWebhookReq.json.blocks));
+
+    const teamsPayload = buildHitlWebhookMessage({
+      webhookUrl: 'https://outlook.webhook.office.com/webhookb2/demo',
+      format: 'auto',
+      workstationUrl: 'https://www.apodictic.dev/workstation',
+      details: { tx_digest: 'abc123', amount: 85000, model: 'account.payment', method: 'create', violations: ['INV_SPEND_CAP'] },
+    });
+    assert.equal(teamsPayload['@type'], 'MessageCard');
+
+    const jsonlInput = path.join(STATE_DIR, 'shadow-events.jsonl');
+    const htmlOut = path.join(STATE_DIR, 'audit-report.html');
+    fs.writeFileSync(
+      jsonlInput,
+      [
+        JSON.stringify({ timestamp: '2026-11-26T18:00:00Z', mode: 'observe', model: 'account.move', method: 'create', verdict: 'WOULD_BLOCK', violations: ['INV_DOUBLE_ENTRY_BALANCE'], exposure_usd: 42000, sanitized_sql: '<script>xss</script>' }),
+        JSON.stringify({ timestamp: '2026-11-26T18:01:00Z', mode: 'observe', model: 'res.partner', method: 'read', verdict: 'SAT', violations: [], exposure_usd: 0 }),
+      ].join('\n') + '\n'
+    );
+    const rep = await generateAuditReport(jsonlInput, { format: 'html', org: 'Acme <CFO>', out: htmlOut });
+    assert.equal(rep.summary.total_inspected, 2);
+    assert.equal(rep.summary.violations_detected, 1);
+    assert.equal(rep.summary.total_exposure_usd, 42000);
+    const htmlContent = fs.readFileSync(htmlOut, 'utf8');
+    assert.ok(!htmlContent.includes('<script>xss</script>'));
+    assert.ok(htmlContent.includes('&lt;script&gt;xss&lt;/script&gt;'));
+    assert.ok(htmlContent.includes('--mode enforce'));
+
+    const ddlPath = path.join(STATE_DIR, 'customer.sql');
+    const irOutPath = path.join(STATE_DIR, 'policy.ir.json');
+    fs.writeFileSync(
+      ddlPath,
+      `
+        CREATE TABLE accounts (id TEXT PRIMARY KEY, balance DOUBLE PRECISION NOT NULL);
+        CREATE TABLE tax_chain (id INT PRIMARY KEY, batch_id INT REFERENCES accounts(id) ON DELETE CASCADE);
+        CREATE TRIGGER hidden_drain AFTER UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION drain();
+      `
+    );
+    const initSql = await runSchemaInit({ schemaFile: ddlPath, out: irOutPath, maxAutonomousLimit: 45000, minReserve: 25000 });
+    assert.equal(initSql.deadlock_check.consistent, true);
+    assert.equal(initSql.savepoint_recommended, true);
+    assert.ok(fs.existsSync(irOutPath));
+
+    const initOdoo = await runSchemaInit({ odooUrl: docOdooBase });
+    assert.equal(initOdoo.deadlock_check.consistent, true);
+    assert.ok(initOdoo.policy_ir.detectedTables.some((t) => t.name === 'account_move'));
+  } finally {
+    await hitlProxy.closeAsync();
+    await new Promise((r) => webhookSrv.close(() => r()));
+    await new Promise((r) => mockDocOdoo.close(() => r()));
+  }
+
+  console.log('✓ @apodictic/mcp-verifier 8-tool spec handshake, schema validation, payload guard, wrap firewall, Ed25519 single-use tokens, wrap-odoo reverse proxy, policy DAG, RFC 6962, audit-report, schema init, HITL webhooks, and Z3 tests passed');
 } finally {
   fs.rmSync(STATE_DIR, { recursive: true, force: true });
 }

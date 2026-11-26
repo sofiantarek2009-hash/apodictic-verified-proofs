@@ -3,7 +3,15 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { SymbolicGateway } from './src/index.mjs';
+import {
+  PGlite,
+  SymbolicGateway,
+  compileDiscoveredPolicyIr,
+  discoverSchemaFromSql,
+} from './src/index.mjs';
+import { createApodicticLangGraphNode, wrapLangGraphTool } from './src/adapters/langgraph.mjs';
+import { createOpenAIGuardrail, wrapOpenAITool } from './src/adapters/openai.mjs';
+import { wrapVercelAITool, wrapVercelAITools } from './src/adapters/vercel-ai.mjs';
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'apodictic-sdk-test-'));
 const stateDbPath = path.join(tmpDir, 'enclave_state.db');
@@ -641,7 +649,107 @@ try {
   );
   void standaloneCheck;
 
-  console.log(`✓ Crash/restart durability, rollback persistence, 20x concurrency, ZATCA, Zero-PII HTTP gateway, Policy DAG, 2-phase escrow, RFC 6962, Mod-97/Luhn, Rust daemon, PGlite shadow firewall, z3.Optimize, adversarial SQL bypasses, Odoo 20 firewall, Zero-Python Z3 WASM, and negative SQL counterfactual clamp tests passed`);
+  // 25. Read-Only Schema Auto-Discovery + Drop-In Adapters (LangGraph, OpenAI, Vercel AI)
+  const ddlSample = `
+    CREATE TABLE accounts (id TEXT PRIMARY KEY, balance DOUBLE PRECISION NOT NULL, min_reserve DOUBLE PRECISION NOT NULL);
+    CREATE TABLE stock_quant (id INT PRIMARY KEY, warehouse_id TEXT NOT NULL, quantity INT NOT NULL);
+    CREATE TABLE fiscal_batches (id INT PRIMARY KEY, period TEXT NOT NULL);
+    CREATE TABLE tax_chain (id INT PRIMARY KEY, batch_id INT REFERENCES fiscal_batches(id) ON DELETE CASCADE, sha256 TEXT NOT NULL);
+    CREATE TRIGGER hidden_fee_drain AFTER UPDATE ON accounts FOR EACH ROW EXECUTE FUNCTION fn_hidden_fee_drain();
+  `;
+  const disc = discoverSchemaFromSql(ddlSample, { source: 'test_ddl.sql' });
+  assert.equal(disc.tables.length, 4);
+  assert.equal(disc.triggers.length, 1);
+  assert.equal(disc.cascades.length, 1);
+  assert.equal(disc.savepointRecommended, true);
+
+  const irCompiled = await compileDiscoveredPolicyIr(disc, { spendCapUsd: 40000, minReserveUsd: 25000 });
+  assert.equal(irCompiled.policy_ir.recommendedMode, 'OBSERVE');
+  assert.equal(irCompiled.deadlock_check.consistent, true);
+  assert.equal(irCompiled.warnings.length, 2);
+  assert.ok(irCompiled.policy_ir.launch_commands.postgres_observe.includes('--savepoint-mode'));
+
+  const wasmAdapterGw = new SymbolicGateway({ engine: 'wasm', stateless: true });
+  try {
+    let lgExecuted = 0;
+    const lgTool = wrapLangGraphTool(
+      {
+        name: 'pg_writer',
+        invoke: async () => {
+          lgExecuted += 1;
+          return 'LG_OK';
+        },
+      },
+      wasmAdapterGw,
+      { currentBalance: 200000, minReserve: 50000, maxAutonomousLimit: 40000 }
+    );
+    const lgBlocked = JSON.parse(await lgTool.invoke({ sql: 'UPDATE accounts SET balance = balance - 85000 WHERE id = 1;', amount: 85000 }));
+    assert.equal(lgBlocked.blocked, true);
+    assert.equal(lgExecuted, 0, 'LangGraph adapter invoked underlying tool after UNSAT!');
+    const lgAllowed = await lgTool.invoke({ sql: 'UPDATE accounts SET balance = balance - 12000 WHERE id = 1;', amount: 12000 });
+    assert.equal(lgAllowed, 'LG_OK');
+    assert.equal(lgExecuted, 1);
+
+    const lgNode = createApodicticLangGraphNode(wasmAdapterGw, { pg_writer: lgTool });
+    const nodeOut = await lgNode({
+      messages: [{ tool_calls: [{ id: 'tc1', name: 'pg_writer', args: { sql: 'DROP TABLE accounts;', amount: 0 } }] }],
+    });
+    assert.equal(JSON.parse(nodeOut.messages[1].content).blocked, true);
+
+    let oaiExecuted = 0;
+    const oaiTool = wrapOpenAITool(
+      {
+        name: 'vendor_pay',
+        execute: async () => {
+          oaiExecuted += 1;
+          return 'OAI_OK';
+        },
+      },
+      wasmAdapterGw,
+      { currentBalance: 200000, minReserve: 50000, maxAutonomousLimit: 40000 }
+    );
+    const oaiBlocked = JSON.parse(await oaiTool.execute({ sql: 'UPDATE accounts SET balance = balance - 90000 WHERE id = 1;', amount: 90000 }));
+    assert.equal(oaiBlocked.blocked, true);
+    assert.equal(oaiExecuted, 0);
+    const oaiAllowed = await oaiTool.execute({ sql: 'UPDATE accounts SET balance = balance - 5000 WHERE id = 1;', amount: 5000 });
+    assert.equal(oaiAllowed, 'OAI_OK');
+    const oaiGuard = createOpenAIGuardrail(wasmAdapterGw);
+    const tripRes = await oaiGuard.execute({ input: { sql: 'DROP TABLE tax_chain;' } });
+    assert.equal(tripRes.tripwireTriggered, true);
+
+    let vExecuted = 0;
+    const vTools = wrapVercelAITools(
+      {
+        payVendor: {
+          description: 'Pay vendor',
+          execute: async () => {
+            vExecuted += 1;
+            return { paid: true };
+          },
+        },
+        noop: { description: 'Read-only metadata' },
+      },
+      wasmAdapterGw,
+      { currentBalance: 200000, minReserve: 50000, maxAutonomousLimit: 40000 }
+    );
+    const vBlocked = await vTools.payVendor.execute({ sql: 'UPDATE accounts SET balance = balance - 99000 WHERE id = 1;', amount: 99000 });
+    assert.equal(vBlocked.blocked, true);
+    assert.equal(vExecuted, 0);
+    const vAllowed = await vTools.payVendor.execute({ sql: 'UPDATE accounts SET balance = balance - 8000 WHERE id = 1;', amount: 8000 });
+    assert.deepEqual(vAllowed, { paid: true });
+    assert.equal(vExecuted, 1);
+
+    const throwVercel = wrapVercelAITool(
+      { execute: async () => 'ok' },
+      wasmAdapterGw,
+      { onBlock: 'throw', maxAutonomousLimit: 10000 }
+    );
+    await assert.rejects(() => throwVercel.execute({ sql: 'UPDATE accounts SET balance = balance - 45000 WHERE id = 1;', amount: 45000 }), /APODICTIC_BLOCK/);
+  } finally {
+    await wasmAdapterGw.close();
+  }
+
+  console.log(`✓ Crash/restart durability, rollback persistence, 20x concurrency, ZATCA, Zero-PII HTTP gateway, Policy DAG, 2-phase escrow, RFC 6962, Mod-97/Luhn, Rust daemon, PGlite shadow firewall, z3.Optimize, adversarial SQL bypasses, Odoo 20 firewall, Zero-Python Z3 WASM, schema discovery, and framework adapters passed`);
 } finally {
   await gw2.close();
   fs.rmSync(tmpDir, { recursive: true, force: true });

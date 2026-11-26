@@ -1,19 +1,21 @@
-# Apodictic — Public Verification Harness, SDKs & CI Attestations (v3.10.1)
+# Apodictic — Public Verification Harness, SDKs & CI Attestations (v3.11.0)
 
-> **Public verification suite, open-source SDKs (`apodictic-sdk@3.10.1`, `apodictic-mcp-verifier@3.10.1`), sealed 24-artifact evidence package, live PostgreSQL 17 Docker CI job, and GitHub Actions CI attestations for [Apodictic](https://www.apodictic.dev).**
+> **Public verification suite, open-source SDKs (`apodictic-sdk@3.10.1`, `apodictic-mcp-verifier@3.10.1` + local v3.11.0 workspace sources), installable Odoo 18–20 Partner Addon (`addons/apodictic_odoo_guard`), sealed 26-artifact evidence package, live PostgreSQL 17 Docker CI job, and GitHub Actions CI attestations for [Apodictic](https://www.apodictic.dev).**
 >
-> The Apodictic enterprise core (`apodictic_engine/`, `apodictic_infra/` 9-crate Rust workspace with `176/176` unit tests, and enterprise ERP adapters) enforces deterministic SQL/ERP/MCP formal verification via Microsoft Z3 `5.4.1`, pure-Rust OxiZ `0.3.4`, and embedded PostgreSQL (`@electric-sql/pglite` & native TCP `pgwire` `SAVEPOINT` mode). This public repository contains all **10 standalone executable Z3 `5.4.1` & Odoo 18–20 proof bundles**, our **v3.10.1 Proof Pack** (**Gist 11**), all **24 SHA-256 sealed receipts** (`manifest.sha256`), a dual-job Ubuntu CI pipeline including a **live `postgres:17` Docker service** (`64` concurrent TCP sessions, `32` concurrent `AFTER UPDATE` PL/pgSQL trigger drains, `ON DELETE CASCADE`, and `40/40` multi-engine red-team bypass tests), and our public **`apodictic-sdk@3.10.1`** & **`apodictic-mcp-verifier@3.10.1`** npm packages.
+> The Apodictic enterprise core (`apodictic_engine/`, `apodictic_infra/` 9-crate Rust workspace with `182/182` unit tests, `proptest`, and `1,000,000`-frame PostgreSQL wire fuzzer) enforces deterministic SQL/ERP/MCP formal verification via Microsoft Z3 `5.4.1`, pure-Rust OxiZ `0.3.4`, and embedded PostgreSQL (`@electric-sql/pglite` & native TCP `pgwire` `SAVEPOINT` mode). This public repository contains all **10 standalone executable Z3 `5.4.1` & Odoo 18–20 proof bundles**, our **v3.11.0 Proof Pack** (**Gist 11**), all **26 SHA-256 sealed receipts** (`manifest.sha256`), the **installable Odoo 18–20 Partner Addon** (`addons/apodictic_odoo_guard`), a dual-job Ubuntu CI pipeline including a **live `postgres:17` Docker service** (`init --dsn` schema auto-discovery, `64` concurrent TCP sessions, `32` concurrent `AFTER UPDATE` PL/pgSQL trigger drains, `ON DELETE CASCADE`, and `40/40` multi-engine red-team bypass tests), and our public **`apodictic-sdk`** (with `@apodictic/sdk/langgraph`, `/openai`, `/vercel-ai`, `/schema-discovery`) & **`apodictic-mcp-verifier`** (`init`, `audit-report` HTML/MD/JSON, `wrap-odoo --hitl-webhook`) packages.
 
-## Instant Zero-Python Verification Demo & Odoo 20 Proxy (`npx`)
+## Instant Zero-Python Verification Demo, Schema Auto-Discovery & Odoo 20 Proxy (`npx`)
 
-Run the 3-scenario formal verification demo (WASM PostgreSQL + Z3 5.4.1 WebAssembly) or wrap an Odoo 18–20 server in shadow `observe` mode on any machine with Node.js `>=22.5`:
+Run the 3-scenario formal verification demo, auto-discover Policy IR from live PostgreSQL or DDL in 30 seconds, or wrap an Odoo 18–20 server in shadow `observe` mode on any machine with Node.js `>=22.5`:
 
 ```bash
 npx apodictic-mcp-verifier demo
+npx apodictic-mcp-verifier init --dsn "$DATABASE_URL"
 npx apodictic-mcp-verifier wrap-odoo --mode observe --port 8070 --upstream http://127.0.0.1:8069
+npx apodictic-mcp-verifier audit-report --input ./apodictic-shadow.jsonl --format html --out ./audit-report.html
 ```
 
-## Verify All 24 Sealed Evidence Artifacts (`manifest.sha256`)
+## Verify All 26 Sealed Evidence Artifacts (`manifest.sha256`)
 
 ```bash
 (cd evidence && shasum -a 256 -c manifest.sha256) # macOS
@@ -22,13 +24,15 @@ npx apodictic-mcp-verifier wrap-odoo --mode observe --port 8070 --upstream http:
 node scripts/adversarial-redteam-audit.mjs --no-write
 ```
 
-Key v3.10.1 receipts inside [`./evidence/`](./evidence):
-- [`evidence/adversarial-redteam-receipt.json`](./evidence/adversarial-redteam-receipt.json) — **40/40 multi-engine adversarial red-team (`20x` WASM + `20x` standalone Python, `0` escapes) + 64-worker Rust TCP contention (`5` allow / `59` SQLSTATE `40001` / `0` overdrafts)** + `32/32` PG trigger drains & `ON DELETE CASCADE` + live `wrap-odoo` CLI + `4/4` DLP + `3/3` Ed25519; continuously re-run against a live `postgres:17` Docker service in GitHub Actions (`verify-live-postgres17-and-redteam`).
+Key v3.11.0 receipts inside [`./evidence/`](./evidence):
+- [`evidence/fuzz-corpus-receipt.json`](./evidence/fuzz-corpus-receipt.json) — **1,000,000-frame deterministic PostgreSQL v3.0 wire fuzzer** (`apodictic_wire_fuzzer`, `0` panics, `0` hostile SQL bypasses, `21,528` frames/s, `83,428` oversized length bombs rejected, `249,906` malformed headers rejected, `166,667` split-TCP frame reassemblies).
+- [`evidence/ciso-soc2-readiness-packet.json`](./evidence/ciso-soc2-readiness-packet.json) — **11-topic machine-readable CISO Security Questionnaire & SOC 2 Trust Services (`CC6–CC8`, `PI1.4`) Readiness Packet** mapped directly to sealed receipts & controls.
+- [`evidence/adversarial-redteam-receipt.json`](./evidence/adversarial-redteam-receipt.json) — **40/40 multi-engine adversarial red-team (`20x` WASM + `20x` standalone Python, `0` escapes) + 64-worker Rust TCP contention (`5` allow / `59` SQLSTATE `40001` / `0` overdrafts)** + `32/32` PG trigger drains & `ON DELETE CASCADE` + live `wrap-odoo` CLI + `4/4` DLP + `3/3` Ed25519; continuously re-run against a live `postgres:17` Docker service in GitHub Actions (`verify-live-postgres17-and-redteam`, now also verifying live `init --dsn` schema auto-discovery).
 - [`evidence/pg17-concurrency-receipt.json`](./evidence/pg17-concurrency-receipt.json) — **16-worker live TCP Rust `apodictic_pg_proxy`** (`3` allowed / `13` blocked via `SQLSTATE 40001` / `0` overdrafts / `$30,000` final balance / WORM WAL verified in `86 ms`) + **PostgreSQL 18.7 (`@electric-sql/pglite`) `SAVEPOINT ... ROLLBACK TO SAVEPOINT`** catching **`16/16`** hidden PL/pgSQL `AFTER UPDATE` fee-drain triggers (`0` corrupted rows).
 - [`evidence/self-heal-benchmark.json`](./evidence/self-heal-benchmark.json) — **100-case `z3.Optimize()` counterfactual self-heal benchmark**: **`100/100 (100%)`** 1-shot guided repair vs **`0%`** blind 1-shot (**`1%`** blind 3-shot), with **`15/15`** SQL-embedded negative literal attacks safely clamped to **`$0`** (`p50 = 5.904 ms`).
-- [`evidence/odoo20-mcp-advisory-readonly-poc.md`](./evidence/odoo20-mcp-advisory-readonly-poc.md) — **Odoo 20 Advisory Readonly MCP PoC**: executable exploit & mitigation proof showing UI-only `Readonly` flags bypassed over `/json/2/` and blocked by `wrap-odoo --mode observe|enforce`.
-- [`evidence/rust-workspace-receipt.txt`](./evidence/rust-workspace-receipt.txt) — **`176/176`** passing Rust unit tests across 9 crates (`0` failures), including multi-table `BEGIN`/`COMMIT`/`ROLLBACK` stateful proofs (`stock_quant`, `account_move_line`, `product_pricelist_item`), `--mode observe|enforce`, and `--savepoint-mode`.
-- [`evidence/vitest-verification-receipt.txt`](./evidence/vitest-verification-receipt.txt) — **`47/47`** passing Vitest integration tests across `9` test files (Hosted Streamable HTTP `/api/mcp` 10 live tools, single-use `tx_digest`-bound Ed25519 HITL CFO approvals, Zod Policy IR + Z3 deadlock checks, PGlite shadow execution, and SPIFFE SVID auth).
+- [`evidence/odoo20-mcp-advisory-readonly-poc.md`](./evidence/odoo20-mcp-advisory-readonly-poc.md) — **Odoo 20 Advisory Readonly MCP PoC**: executable exploit & mitigation proof showing UI-only `Readonly` flags bypassed over `/json/2/` and blocked by `wrap-odoo --mode observe|enforce` (paired with installable partner module [`addons/apodictic_odoo_guard/`](./addons/apodictic_odoo_guard)).
+- [`evidence/rust-workspace-receipt.txt`](./evidence/rust-workspace-receipt.txt) — **`182/182`** passing Rust unit & `proptest` tests across 9 crates (`0` failures), including multi-table `BEGIN`/`COMMIT`/`ROLLBACK` stateful proofs (`stock_quant`, `account_move_line`, `product_pricelist_item`), `--mode observe|enforce`, `--savepoint-mode`, Slack/Teams/Generic Ed25519 HITL webhook delivery (`--hitl-webhook`), and HTML/Markdown/JSON shadow audit reports.
+- [`evidence/vitest-verification-receipt.txt`](./evidence/vitest-verification-receipt.txt) — **`49/49`** passing Vitest integration tests across `10` test files (Hosted Streamable HTTP `/api/mcp` 10 live tools, single-use `tx_digest`-bound Ed25519 HITL CFO approvals, Zod Policy IR + Z3 deadlock checks, Schema Discovery `/api/apodictic/discover-schema`, PGlite shadow execution, and SPIFFE SVID auth).
 - [`docs/odoo20-mcp-advisory-readonly-poc.md`](./docs/odoo20-mcp-advisory-readonly-poc.md) — Executable PoC & defense analysis for Odoo 20's UI-only advisory `Readonly` bypass over `/json/2/` and `/mcp`.
 
 ## Run All 10 Standalone Z3 & Odoo 18–20 Proof Bundles Locally
@@ -59,7 +63,7 @@ for f in gists/*/*.py; do echo "=== $f ==="; python3 "$f"; done
 | **08** | [`gists/08-domain-secrets-multi-turn-smurfing-defense`](./gists/08-domain-secrets-multi-turn-smurfing-defense) | [Open Gist 08](https://gist.github.com/sofiantarek2009-hash/820360e91d5a353ff949c1ac4acae18f) | Indirect OCR Prompt Injection & 24h Split-Payment Smurfing Defense |
 | **09** | [`gists/09-live-odoo-eta-invoice-pipeline`](./gists/09-live-odoo-eta-invoice-pipeline) | [Open Gist 09](https://gist.github.com/sofiantarek2009-hash/8df417b9511306993ef1252b3485e68f) | Live Odoo 18–20 JSON-RPC 2.0 / JSON-2 & Egypt ETA v1.0 Pipeline |
 | **10** | [`gists/10-odoo20-mcp-json2-firewall`](./gists/10-odoo20-mcp-json2-firewall) | [Open Gist 10](https://gist.github.com/sofiantarek2009-hash/ee838059d7c4b0c3b9896ca40094a39d) | Odoo 20 `/json/2/` Bearer API & MCP Agentic ERP Firewall |
-| **11** | [`evidence/`](./evidence) & [`docs/odoo20-mcp-advisory-readonly-poc.md`](./docs/odoo20-mcp-advisory-readonly-poc.md) | [Open Gist 11](https://gist.github.com/sofiantarek2009-hash/592c0ebdb0255ba88172f5ecbfbf4bc3) | v3.10.1 Proof Pack: 16-Worker TCP & PG 18.7 Concurrency, 100-Case Self-Heal, Odoo 20 Readonly PoC & Scope |
+| **11** | [`evidence/`](./evidence) & [`docs/odoo20-mcp-advisory-readonly-poc.md`](./docs/odoo20-mcp-advisory-readonly-poc.md) | [Open Gist 11](https://gist.github.com/sofiantarek2009-hash/592c0ebdb0255ba88172f5ecbfbf4bc3) | v3.11.0 Proof Pack: 1M Wire Fuzzer, CISO/SOC 2 Packet, 16w & 64w TCP + PG Concurrency, Self-Heal & Odoo 20 PoC |
 
 ## Live Site, Machine-Readable Specs, Packages & PDF Briefs
 
@@ -74,5 +78,5 @@ for f in gists/*/*.py; do echo "=== $f ==="; python3 "$f"; done
 - **Polymarket Statistical Models:** [Showcase Repo](https://github.com/sofiantarek2009-hash/polymarket-prediction-models) · [Runnable Proof Gist](https://gist.github.com/sofiantarek2009-hash/9b62a1b39b175a7574452c393e16f71f)
 - **AI Legal NLP, Biotech & Forecasting:** [Showcase Repo](https://github.com/sofiantarek2009-hash/ai-legal-compliance-nlp) · [Runnable Proof Gist](https://gist.github.com/sofiantarek2009-hash/66bcce759395d549fa402d0ee4411cd8)
 - **Autonomous Fixed-Wing UAV (SIL):** [Showcase Repo](https://github.com/sofiantarek2009-hash/autonomous-fixed-wing-uav) · [Runnable Proof Gist](https://gist.github.com/sofiantarek2009-hash/5a2fe80e4b6eb7809202c54b7a337255)
-- **Apodictic Public Verification Harness (11 Proof Bundles + 24 Sealed Artifacts):** [apodictic-verified-proofs](https://github.com/sofiantarek2009-hash/apodictic-verified-proofs)
+- **Apodictic Public Verification Harness (11 Proof Bundles + 26 Sealed Artifacts):** [apodictic-verified-proofs](https://github.com/sofiantarek2009-hash/apodictic-verified-proofs)
 - **Live Explorer & AI Agent Specs:** [www.apodictic.dev/proofs](https://www.apodictic.dev/proofs) · [`llms.txt`](https://www.apodictic.dev/llms.txt) · [`.well-known/agent.json`](https://www.apodictic.dev/.well-known/agent.json) · [GitHub Profile](https://github.com/sofiantarek2009-hash)

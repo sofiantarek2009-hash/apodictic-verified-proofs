@@ -19,7 +19,9 @@ jobs:
             echo "=== Running $f ==="
             python3 "$f"
           done
-      - name: Verify 24-artifact SHA-256 evidence manifest
+      - name: Run Odoo 18-20 Partner Module AST/XML/HMAC Verification Suite
+        run: python3 -m unittest apodictic_engine/tests/test_odoo_partner_module.py -v
+      - name: Verify 26-artifact SHA-256 evidence manifest
         run: (cd evidence && sha256sum -c manifest.sha256)
       - name: Install and run apodictic-sdk & apodictic-mcp-verifier test suites (including Zero-Python Z3 WASM)
         run: |

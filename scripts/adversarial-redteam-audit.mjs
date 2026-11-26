@@ -652,6 +652,20 @@ async function runSuiteBPostgresTriggersCascadeAndContention(pgUrl) {
         const postCascadeCnt = Number((await pool.query('SELECT COUNT(*)::int AS cnt FROM tax_chain;')).rows[0].cnt);
         assert.equal(postCascadeCnt, 1);
 
+        // 2b) Live 30-second schema auto-discovery via `apodictic-mcp-verifier init --dsn`
+        const initRaw = execFileSync(process.execPath, [MCP_CLI_BIN, 'init', '--dsn', pgUrl], {
+          cwd: REPO_ROOT,
+          encoding: 'utf8',
+          env: { ...process.env, APODICTIC_DISABLE_PYTHON: '1' },
+        });
+        const initParsed = JSON.parse(initRaw);
+        assert.equal(initParsed.deadlock_check?.consistent, true, 'init --dsn Z3 deadlock check should be consistent');
+        assert.equal(initParsed.savepoint_recommended, true, 'init --dsn should recommend --savepoint-mode on trigger + CASCADE schema');
+        assert.ok(
+          Array.isArray(initParsed.warnings) && initParsed.warnings.length >= 2,
+          'init --dsn should emit trigger and CASCADE warnings'
+        );
+
         // 3) 64 concurrent real TCP PostgreSQL 17 clients with SELECT ... FOR UPDATE + WASM Z3 check
         await pool.query("DROP TRIGGER IF EXISTS hidden_fee_drain ON accounts CASCADE; UPDATE accounts SET balance = 60000 WHERE id = 'acc_treasury';");
         let live64Commits = 0;
@@ -698,6 +712,8 @@ async function runSuiteBPostgresTriggersCascadeAndContention(pgUrl) {
         livePg17Result = {
           status: 'PASS',
           server_version: liveVersionString,
+          schema_init_dsn_verified: true,
+          schema_init_warnings: initParsed.warnings.length,
           concurrent_triggers_32: {
             workers: 32,
             trigger_catches: liveTriggerCatches,

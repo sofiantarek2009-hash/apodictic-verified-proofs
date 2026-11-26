@@ -1,38 +1,49 @@
 
- RUN  v4.1.7 /Users/sofian/App/frontend
+> apodictic@0.1.0 test
+> vitest
 
-(node:47695) ExperimentalWarning: SQLite is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:47694) ExperimentalWarning: SQLite is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:47697) ExperimentalWarning: SQLite is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:47696) ExperimentalWarning: SQLite is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:47693) ExperimentalWarning: SQLite is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:47700) ExperimentalWarning: SQLite is an experimental feature and might change at any time
-(Use `node --trace-warnings ...` to show where the warning was created)
- ✓ __tests__/unit/agent-readiness.test.ts (5 tests) 20ms
- ✓ __tests__/unit/production-upgrades.test.ts (9 tests) 553ms
-     ✓ POST /api/agent/compile-goal compiles multi-clause English to Policy IR, Cedar, Python AST, English back-translation & Z3 SAT witness in OBSERVE mode  435ms
- ✓ __tests__/unit/apodictic-verifier.test.ts (5 tests) 12ms
- ✓ __tests__/unit/worm-vault.test.ts (3 tests) 6ms
- ✓ __tests__/unit/odoo20-and-agent-routes.test.ts (3 tests) 728ms
-     ✓ POST /api/v1/enclave and /api/apodictic/verify enforce debitTotal == creditTotal and Odoo 20 fiscal lock / inalterable hash / MCP scope rules via Z3  441ms
- ✓ test-exports.test.ts (5 tests) 319ms
-     ✓ should attempt to download PDF without crashing  311ms
- ✓ __tests__/serverless-wasm-enclave.test.ts (6 tests) 1745ms
-     ✓ verifyWithRealZ3 enforces SAT, liquidity breach, double-entry drift, stacked SQL & Odoo 20 invariants in WASM  379ms
-     ✓ ShadowPostgresVerifier (engine=wasm) proves SAT & synthesizes CEGIS patches in PGlite 17 + Z3 WASM  1014ms
- ✓ __tests__/unit/moats-api.test.ts (5 tests) 2314ms
-     ✓ POST /api/v1/shadow-prove enforces SPIFFE 401, catches trigger drain, attaches otel_genai_span & counterfactualPatch  1999ms
- ✓ __tests__/unit/apodictic-api-routes.test.ts (6 tests) 2733ms
-     ✓ POST /api/apodictic/verify runs real Z3 5.4.1 verification and masks PII  502ms
-     ✓ GET /api/apodictic/gists serves all 10 verified bundles and POST executes all 10 runnable Z3 proofs  1927ms
 
- Test Files  9 passed (9)
-      Tests  47 passed (47)
-   Start at  19:55:17
-   Duration  3.08s (transform 873ms, setup 0ms, import 1.63s, tests 8.43s, environment 2.74s)
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.7 [39m[90m/Users/sofian/App/frontend[39m
+
+(node:54321) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54320) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54318) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54322) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54319) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54326) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m __tests__/unit/agent-readiness.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m __tests__/unit/apodictic-verifier.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+(node:54324) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m __tests__/unit/production-upgrades.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 794[2mms[22m[39m
+     [33m[2m✓[22m[39m POST /api/agent/compile-goal compiles multi-clause English to Policy IR, Cedar, Python AST, English back-translation & Z3 SAT witness in OBSERVE mode [33m 559[2mms[22m[39m
+ [32m✓[39m test-exports.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 662[2mms[22m[39m
+     [33m[2m✓[22m[39m should attempt to download PDF without crashing [33m 655[2mms[22m[39m
+ [32m✓[39m __tests__/unit/schema-discovery-and-sandbox.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 448[2mms[22m[39m
+     [33m[2m✓[22m[39m detects financial/inventory tables, hidden PL/pgSQL triggers, ON DELETE CASCADE, and verifies Z3 deadlock freedom [33m 411[2mms[22m[39m
+ [32m✓[39m __tests__/unit/worm-vault.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m __tests__/unit/odoo20-and-agent-routes.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 1069[2mms[22m[39m
+     [33m[2m✓[22m[39m POST /api/v1/enclave and /api/apodictic/verify enforce debitTotal == creditTotal and Odoo 20 fiscal lock / inalterable hash / MCP scope rules via Z3 [33m 519[2mms[22m[39m
+     [33m[2m✓[22m[39m POST /api/agent/universal-saas, self-heal, simulate, compile-goal, counterfactual, catalog, ledger/state, and simulation/run-all execute real Z3 proofs [33m 544[2mms[22m[39m
+ [32m✓[39m __tests__/serverless-wasm-enclave.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 1822[2mms[22m[39m
+     [33m[2m✓[22m[39m verifyWithRealZ3 enforces SAT, liquidity breach, double-entry drift, stacked SQL & Odoo 20 invariants in WASM [33m 385[2mms[22m[39m
+     [33m[2m✓[22m[39m runGistProofWithZ3Wasm and runProofTranscriptWithZ3Wasm produce real live Z3 WASM attestations [33m 338[2mms[22m[39m
+     [33m[2m✓[22m[39m ShadowPostgresVerifier (engine=wasm) proves SAT & synthesizes CEGIS patches in PGlite 17 + Z3 WASM [33m 1008[2mms[22m[39m
+ [32m✓[39m __tests__/unit/moats-api.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 2298[2mms[22m[39m
+     [33m[2m✓[22m[39m POST /api/v1/shadow-prove enforces SPIFFE 401, catches trigger drain, attaches otel_genai_span & counterfactualPatch [33m 2012[2mms[22m[39m
+ [32m✓[39m __tests__/unit/apodictic-api-routes.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 2908[2mms[22m[39m
+     [33m[2m✓[22m[39m POST /api/apodictic/verify runs real Z3 5.4.1 verification and masks PII [33m 554[2mms[22m[39m
+     [33m[2m✓[22m[39m GET /api/apodictic/proof-transcript executes 6-subsystem Z3 5.4.1 harness and returns SHA-256 header [33m 452[2mms[22m[39m
+     [33m[2m✓[22m[39m GET /api/apodictic/gists serves all 10 verified bundles and POST executes all 10 runnable Z3 proofs [33m 1840[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m10 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[32m49 passed[39m[22m[90m (49)[39m
+[2m   Start at [22m 21:06:02
+[2m   Duration [22m 3.31s[2m (transform 1.15s, setup 0ms, import 1.95s, tests 10.04s, environment 2.47s)[22m
 

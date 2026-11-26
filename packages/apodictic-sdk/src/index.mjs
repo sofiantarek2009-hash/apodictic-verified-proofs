@@ -11,7 +11,13 @@ import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { evaluateOdoo20Call, extractOdoo20Call } from './odoo20_guard.mjs';
 import { PGlite, ShadowPostgresVerifier } from './pglite_shadow.mjs';
-import { terminateZ3WasmThreads, Z3WasmEnclaveSession } from './z3_wasm_verifier.mjs';
+import {
+  compileDiscoveredPolicyIr,
+  discoverSchemaFromOdoo,
+  discoverSchemaFromPgDsn,
+  discoverSchemaFromSql,
+} from './schema_discovery.mjs';
+import { checkPolicyIrDeadlockWasm, terminateZ3WasmThreads, Z3WasmEnclaveSession } from './z3_wasm_verifier.mjs';
 
 const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF\u00AD]/g;
 
@@ -618,5 +624,16 @@ export class SymbolicGateway {
   }
 }
 
-export { PGlite, ShadowPostgresVerifier, Z3WasmEnclaveSession, evaluateOdoo20Call, extractOdoo20Call };
+export {
+  PGlite,
+  ShadowPostgresVerifier,
+  Z3WasmEnclaveSession,
+  checkPolicyIrDeadlockWasm,
+  compileDiscoveredPolicyIr,
+  discoverSchemaFromOdoo,
+  discoverSchemaFromPgDsn,
+  discoverSchemaFromSql,
+  evaluateOdoo20Call,
+  extractOdoo20Call,
+};
 export default SymbolicGateway;

@@ -797,6 +797,65 @@ export async function runZ3WasmSmtProof({
   };
 }
 
+export async function checkPolicyIrDeadlockWasm(clauses = []) {
+  const t0 = performance.now();
+  const { Solver, Int } = await getSharedZ3Context();
+  const solver = new Solver();
+
+  const amt = Int.const('amount_usd');
+  const bal = Int.const('balance_usd');
+  const disc = Int.const('discount_pct');
+  const branches = Int.const('branch_count');
+
+  solver.add(amt.ge(0), bal.ge(0), disc.ge(0), branches.ge(1));
+
+  for (const cl of clauses || []) {
+    if (!cl || typeof cl !== 'object') continue;
+    if (cl.kind === 'max_payout_cap') {
+      solver.addAndTrack(amt.le(Math.round(Number(cl.limitUsd ?? 0))), `CAP_${Math.round(Number(cl.limitUsd ?? 0))}`);
+    } else if (cl.kind === 'min_payout_floor') {
+      solver.addAndTrack(amt.ge(Math.round(Number(cl.minUsd ?? 0))), `FLOOR_${Math.round(Number(cl.minUsd ?? 0))}`);
+    } else if (cl.kind === 'min_reserve_floor') {
+      solver.addAndTrack(bal.sub(amt).ge(Math.round(Number(cl.reserveUsd ?? 0))), `RESERVE_${Math.round(Number(cl.reserveUsd ?? 0))}`);
+    } else if (cl.kind === 'max_discount_pct') {
+      solver.addAndTrack(disc.le(Math.round(Number(cl.maxPct ?? 100))), `DISC_${Math.round(Number(cl.maxPct ?? 100))}`);
+    } else if (cl.kind === 'max_branch_blast_radius') {
+      solver.addAndTrack(branches.le(Math.round(Number(cl.maxBranches ?? 1))), `BRANCH_${Math.round(Number(cl.maxBranches ?? 1))}`);
+    } else if (cl.kind === 'time_window_cap') {
+      solver.addAndTrack(amt.le(Math.round(Number(cl.limitUsd ?? 0))), `WINDOW_${Math.round(Number(cl.limitUsd ?? 0))}`);
+    }
+  }
+
+  const chk = await solver.check();
+  const consistent = chk === 'sat';
+  let witness = null;
+  if (consistent) {
+    const model = solver.model();
+    const num = (expr, fallback) => {
+      try {
+        const val = Number(model.eval(expr).toString());
+        return Number.isFinite(val) ? val : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    witness = {
+      amount_usd: num(amt, 0),
+      balance_usd: num(bal, 0),
+      discount_pct: num(disc, 0),
+      branch_count: num(branches, 1),
+    };
+  }
+
+  return {
+    consistent,
+    status: consistent ? 'SAT' : 'DEADLOCK_UNSAT',
+    unsat_core: consistent ? [] : extractUnsatCore(solver),
+    witness_example: witness,
+    solve_ms: Number((performance.now() - t0).toFixed(3)),
+  };
+}
+
 export class Z3WasmEnclaveSession {
   constructor(stateDbPath = '') {
     this.startedAt = performance.now();

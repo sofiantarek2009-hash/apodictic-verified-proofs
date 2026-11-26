@@ -1,0 +1,21 @@
+{
+  "generated_at_unix_ms": 1795718771182,
+  "benchmark": "Apodictic PostgreSQL v3.0 Wire-Parser & SQL AST Continuous Fuzzer",
+  "status": "PASS",
+  "rustc_arch": "aarch64",
+  "seed": "0xa90d1c71c2026001",
+  "iterations": 1000000,
+  "panics": 0,
+  "hostile_sql_bypasses": 0,
+  "oversized_frame_rejects": 83428,
+  "malformed_header_rejects": 249906,
+  "split_tcp_reassemblies": 166667,
+  "malformed_bind_parse_handled": 166667,
+  "invalid_utf8_handled": 166667,
+  "extended_numeric_decodes": 166666,
+  "elapsed_ms": 46450.84,
+  "throughput_frames_per_sec": 21528,
+  "max_pg_frame_len_bytes": 16777216,
+  "proptest_module": "apodictic_wire_proxy::tests::wire_parser_proptests",
+  "cargo_fuzz_target": "apodictic_infra/fuzz/fuzz_targets/pg_wire_codec.rs"
+}

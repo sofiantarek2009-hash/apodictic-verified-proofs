@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_apodictic" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.apodictic</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="account.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='account']" position="inside">
+                <block title="Apodictic Z3 Agent Firewall (Odoo 18-20 /json/2/)" name="apodictic_firewall_settings">
+                    <setting id="apodictic_proxy_setting" help="Route AI agent / MCP JSON-2 and JSON-RPC traffic through apodictic-mcp-verifier wrap-odoo.">
+                        <field name="apodictic_proxy_url"/>
+                        <div class="mt16">
+                            <label for="apodictic_mode"/>
+                            <field name="apodictic_mode" class="o_light_label"/>
+                        </div>
+                        <div class="mt8">
+                            <button name="action_fetch_shadow_exposure" type="object" string="Sync Shadow Exposure" class="btn-secondary"/>
+                        </div>
+                        <div class="text-muted mt8">
+                            <field name="apodictic_last_exposure_summary"/>
+                        </div>
+                    </setting>
+                    <setting id="apodictic_policy_setting" help="Configure fail-closed spend limits, advisory Readonly MCP scope blocking, and Slack/Teams CFO alerts.">
+                        <field name="apodictic_spend_cap_usd"/>
+                        <field name="apodictic_enforce_bearer_mcp"/>
+                        <field name="apodictic_hitl_webhook_url"/>
+                        <field name="apodictic_webhook_secret" password="True"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

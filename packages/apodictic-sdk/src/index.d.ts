@@ -157,4 +157,10 @@ export { PGlite } from '@electric-sql/pglite';
 export { ShadowPostgresVerifier } from './pglite_shadow.mjs';
 export { Z3WasmEnclaveSession } from './z3_wasm_verifier.mjs';
 export { evaluateOdoo20Call, extractOdoo20Call } from './odoo20_guard.mjs';
+export {
+  compileDiscoveredPolicyIr,
+  discoverSchemaFromOdoo,
+  discoverSchemaFromPgDsn,
+  discoverSchemaFromSql,
+} from './schema_discovery.mjs';
 export default SymbolicGateway;

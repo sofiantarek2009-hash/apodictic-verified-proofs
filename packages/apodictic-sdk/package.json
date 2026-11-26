@@ -8,16 +8,32 @@
   "main": "./src/index.mjs",
   "types": "./src/index.d.ts",
   "files": [
-    "src/*.mjs",
-    "src/*.py",
-    "src/*.d.ts",
-    "src/*.d.mts",
+    "src/**/*.mjs",
+    "src/**/*.py",
+    "src/**/*.d.ts",
+    "src/**/*.d.mts",
     "README.md"
   ],
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
       "default": "./src/index.mjs"
+    },
+    "./schema-discovery": {
+      "types": "./src/schema_discovery.d.ts",
+      "default": "./src/schema_discovery.mjs"
+    },
+    "./langgraph": {
+      "types": "./src/adapters/langgraph.d.ts",
+      "default": "./src/adapters/langgraph.mjs"
+    },
+    "./openai": {
+      "types": "./src/adapters/openai.d.ts",
+      "default": "./src/adapters/openai.mjs"
+    },
+    "./vercel-ai": {
+      "types": "./src/adapters/vercel-ai.d.ts",
+      "default": "./src/adapters/vercel-ai.mjs"
     }
   },
   "scripts": {
