@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-26T16:18:41.801Z",
+  "generated_at": "2026-11-25T14:52:01.718Z",
   "benchmark": "100-Case Z3 Optimize Counterfactual Self-Healing vs Blind Retry",
   "status": "PASS",
   "engine": "z3-5.4.1-wasm-optimize",
@@ -20,7 +20,7 @@
     "blind_three_shot_rate_pct": 1,
     "negative_cases_clamped_to_zero": 15,
     "unsafe_positive_repairs_on_negative": 0,
-    "latency_p50_ms": 5.573,
-    "latency_p95_ms": 6.253
+    "latency_p50_ms": 5.904,
+    "latency_p95_ms": 6.963
   }
 }
